@@ -17,8 +17,20 @@ if (file_exists($lock_file) && file_exists($config_file)) {
     header('Location: admin/'); exit;
 }
 
+function knk_is_https() {
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') return true;
+    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') return true;
+    if (!empty($_SERVER['HTTP_CLOUDFRONT_FORWARDED_PROTO']) && $_SERVER['HTTP_CLOUDFRONT_FORWARDED_PROTO'] === 'https') return true;
+    if (!empty($_SERVER['HTTP_CF_VISITOR'])) {
+        $cf = json_decode($_SERVER['HTTP_CF_VISITOR'], true);
+        if (!empty($cf['scheme']) && $cf['scheme'] === 'https') return true;
+    }
+    return false;
+}
+
 function detect_site_url() {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $scheme = knk_is_https() ? 'https' : 'http';
     $host   = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
     $script = dirname(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '/');
     $script = rtrim(str_replace('\\','/',$script), '/');
@@ -149,7 +161,7 @@ function run_installer($pdo, $install, $adminUser, $adminPass, $siteUrl)
             operator_id BIGINT UNSIGNED DEFAULT NULL,
             name VARCHAR(255) DEFAULT NULL,
             email VARCHAR(255) DEFAULT NULL,
-            phone VARCHAR(50) DEFAULT NULL,
+            phone VARCHAR(255) DEFAULT NULL,
             address TEXT DEFAULT NULL,
             quantity VARCHAR(100) DEFAULT NULL,
             custom_message TEXT DEFAULT NULL,
@@ -177,9 +189,10 @@ function run_installer($pdo, $install, $adminUser, $adminPass, $siteUrl)
             ip_address VARCHAR(45) DEFAULT NULL,
             fingerprint VARCHAR(64) DEFAULT NULL,
             cookie_id VARCHAR(128) DEFAULT NULL,
-            phone VARCHAR(50) DEFAULT NULL,
+            phone VARCHAR(255) DEFAULT NULL,
             email VARCHAR(255) DEFAULT NULL,
             reason TEXT DEFAULT NULL,
+            block_type ENUM('ip','cookie','both') NOT NULL DEFAULT 'both',
             blocked_by BIGINT UNSIGNED DEFAULT NULL,
             operator_name VARCHAR(255) DEFAULT NULL,
             blocked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -243,6 +256,14 @@ function run_installer($pdo, $install, $adminUser, $adminPass, $siteUrl)
     ];
 
     foreach ($sqls as $sql) $pdo->exec($sql);
+
+    // Upgrade existing tables — safe to run on fresh install too (IF NOT EXISTS / IGNORE)
+    $upgrades = [
+        "ALTER TABLE `{$pfx}blocked` ADD COLUMN IF NOT EXISTS `block_type` ENUM('ip','cookie','both') NOT NULL DEFAULT 'both' AFTER `reason`",
+    ];
+    foreach ($upgrades as $sql) {
+        try { $pdo->exec($sql); } catch (PDOException $e) { /* column may already exist */ }
+    }
 
     $defaults = [
         'telegram_bot_token'     => '',
