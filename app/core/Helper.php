@@ -239,7 +239,7 @@ class Helper
         $campaign = Campaign::find($lead->campaign_id);
         if (!$campaign) return;
 
-        $pixel = $campaign->pixel_config ? json_decode($campaign->pixel_config, true) : [];
+        $pixel = Campaign::decodeJsonField($campaign->pixel_config ?? null);
         $statusEvents = isset($pixel['status_events']) ? $pixel['status_events'] : [];
 
         $mapping = isset($statusEvents[$status]) ? $statusEvents[$status] : [];

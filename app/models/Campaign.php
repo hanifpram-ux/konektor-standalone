@@ -44,13 +44,13 @@ class Campaign
             'type'                => in_array($type, ['form','wa_link']) ? $type : 'form',
             'store_name'          => substr(strip_tags(isset($data['store_name'])   ? $data['store_name']   : ''), 0, 255),
             'product_name'        => substr(strip_tags(isset($data['product_name']) ? $data['product_name'] : ''), 0, 255),
-            'form_config'         => !empty($data['form_config'])        ? json_encode($data['form_config'],       JSON_UNESCAPED_UNICODE) : null,
-            'thanks_page_config'  => !empty($data['thanks_page_config']) ? json_encode($data['thanks_page_config'],JSON_UNESCAPED_UNICODE) : null,
-            'pixel_config'        => !empty($data['pixel_config'])       ? json_encode($data['pixel_config'],      JSON_UNESCAPED_UNICODE) : null,
+            'form_config'         => self::encodeJsonField($data['form_config']        ?? null),
+            'thanks_page_config'  => self::encodeJsonField($data['thanks_page_config'] ?? null),
+            'pixel_config'        => self::encodeJsonField($data['pixel_config']       ?? null),
             'double_lead_enabled' => !empty($data['double_lead_enabled']) ? 1 : 0,
             'double_lead_message' => strip_tags(isset($data['double_lead_message']) ? $data['double_lead_message'] : ''),
             'followup_message'    => strip_tags(isset($data['followup_message'])    ? $data['followup_message']    : ''),
-            'allowed_domains'     => !empty($data['allowed_domains']) ? json_encode($data['allowed_domains']) : '[]',
+            'allowed_domains'     => self::encodeJsonField($data['allowed_domains'] ?? null) ?: '[]',
             'block_enabled'       => !empty($data['block_enabled']) ? 1 : 0,
             'block_message'       => strip_tags(isset($data['block_message']) ? $data['block_message'] : ''),
             'status'              => in_array($status, ['active','inactive']) ? $status : 'active',
@@ -132,11 +132,50 @@ class Campaign
         );
     }
 
+    // ─── Internal helpers ────────────────────────────────────────────────────
+
+    /**
+     * Safely JSON-encode a field that may already be a JSON string (e.g. from a DB row cast to array).
+     * Prevents double-encoding when duplicating campaigns.
+     */
+    private static function encodeJsonField($value)
+    {
+        if (empty($value)) return null;
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) $value = $decoded;
+        }
+        return json_encode($value, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Decode a JSON field, handling double-encoded strings (from old duplicate bug).
+     * Always returns an array.
+     */
+    public static function decodeJsonField($value)
+    {
+        if (empty($value)) return [];
+        $decoded = json_decode($value, true);
+        if (json_last_error() !== JSON_ERROR_NONE) return [];
+        // Handle double-encoded: result is still a string
+        if (is_string($decoded)) {
+            $decoded2 = json_decode($decoded, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded2)) return $decoded2;
+            return [];
+        }
+        return is_array($decoded) ? $decoded : [];
+    }
+
     // ─── Config helpers ─────────────────────────────────────────────────────
+
+    public static function getPixelConfig($campaign)
+    {
+        return self::decodeJsonField($campaign->pixel_config ?? null);
+    }
 
     public static function getFormConfig($campaign)
     {
-        $cfg = $campaign->form_config ? json_decode($campaign->form_config, true) : [];
+        $cfg = self::decodeJsonField($campaign->form_config ?? null);
         $def = self::defaultFormConfig();
         if (empty($cfg['fields']))       $cfg['fields']       = $def['fields'];
         if (empty($cfg['template']))     $cfg['template']     = $def['template'];
@@ -146,7 +185,7 @@ class Campaign
 
     public static function getThanksConfig($campaign)
     {
-        $cfg = $campaign->thanks_page_config ? json_decode($campaign->thanks_page_config, true) : [];
+        $cfg = self::decodeJsonField($campaign->thanks_page_config ?? null);
         $def = self::defaultThanksConfig();
         foreach ($def as $k => $v) {
             if (!isset($cfg[$k])) $cfg[$k] = $v;

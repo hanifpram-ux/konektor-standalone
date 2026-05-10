@@ -10,7 +10,7 @@ class SnackApi
 
     public static function getConfig($campaign)
     {
-        $pixel = $campaign->pixel_config ? json_decode($campaign->pixel_config, true) : [];
+        $pixel = Campaign::decodeJsonField($campaign->pixel_config ?? null);
         $cfg = isset($pixel['snack']) ? $pixel['snack'] : [];
         // Backward compatibility: if 'enabled' key doesn't exist, treat as enabled (old campaigns)
         if (array_key_exists('enabled', $cfg) && empty($cfg['enabled'])) return [];
