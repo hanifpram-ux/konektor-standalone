@@ -86,6 +86,12 @@ DB::init(
     KONEKTOR_DB_PREFIX
 );
 
+// Apply timezone from settings (default: Asia/Jakarta / WIB)
+$_knk_tz = DB::val(
+    "SELECT setting_value FROM " . DB::t('settings') . " WHERE setting_key = 'timezone'"
+);
+date_default_timezone_set($_knk_tz ?: 'Asia/Jakarta');
+
 // Session — PHP 7.1 compatible (array form for session_set_cookie_params not available until 7.3)
 if (session_status() === PHP_SESSION_NONE) {
     session_name('knk_session');

@@ -109,12 +109,14 @@ class Campaign
 
         $newId = self::save($data);
 
-        // Copy operators
+        // Copy operators (getOperators JOINs operators table so use o.id, not operator_id)
         $ops = self::getOperators($id);
         foreach ($ops as $op) {
+            $opId = (int)$op->id;
+            if ($opId <= 0) continue;
             DB::insert('campaign_operators', [
                 'campaign_id' => $newId,
-                'operator_id' => (int)$op->operator_id,
+                'operator_id' => $opId,
                 'weight'      => (int)$op->weight,
             ]);
         }

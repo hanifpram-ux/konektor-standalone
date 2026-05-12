@@ -247,7 +247,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="card-followup">
       <div class="card-header"><h3 class="card-title">Pesan Follow-up</h3><p class="card-desc">Pesan WA dari CS ke customer setelah lead masuk</p></div>
       <div class="card-content">
         <textarea id="inp_followup" class="input" rows="3" placeholder="Halo [cname], saya [oname]..."
@@ -1137,6 +1137,9 @@ const KNK = (() => {
     if(formPanel) formPanel.style.display = isWa ? 'none' : 'flex';
     if(linkPanel) linkPanel.style.flexDirection = 'column';
     if(formPanel) formPanel.style.flexDirection = 'column';
+    // Hide follow-up card for wa_link (no contact data to follow up)
+    var followupCard = $('card-followup');
+    if(followupCard) followupCard.style.display = isWa ? 'none' : '';
     // page desc
     var desc = $('page_desc_main');
     if(desc) desc.textContent = isWa

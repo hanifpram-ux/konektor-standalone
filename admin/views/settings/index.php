@@ -49,9 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Always update site_url from current request dynamically
         Settings::set('site_url', currentSiteUrl());
         $allowed = ['app_name','cs_panel_slug','telegram_bot_token','encrypt_lead_data',
-                    'webhook_url','webhook_secret'];
+                    'webhook_url','webhook_secret','timezone'];
         foreach ($allowed as $k) {
             if (isset($_POST[$k])) Settings::set($k, strip_tags(trim($_POST[$k])));
+        }
+        // Apply timezone immediately for this request
+        if (!empty($_POST['timezone'])) {
+            @date_default_timezone_set($_POST['timezone']);
         }
         flashSet('success', 'Pengaturan disimpan.');
     }
@@ -117,6 +121,49 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
               <label class="label">CS Panel Slug</label>
               <input name="cs_panel_slug" value="<?= ae($s['cs_panel_slug'] ?? 'cs-panel') ?>" class="input" placeholder="cs-panel">
               <p class="form-description">URL panel CS: <?= ae($currentUrl) ?>/<span style="font-weight:600;"><?= ae($s['cs_panel_slug'] ?? 'cs-panel') ?></span>/TOKEN</p>
+            </div>
+            <div>
+              <label class="label">Zona Waktu (Timezone)</label>
+              <?php
+              $tz_current = $s['timezone'] ?? 'Asia/Jakarta';
+              $tz_groups = [
+                'Indonesia' => [
+                  'Asia/Jakarta'    => 'WIB — Waktu Indonesia Barat (UTC+7)',
+                  'Asia/Makassar'   => 'WITA — Waktu Indonesia Tengah (UTC+8)',
+                  'Asia/Jayapura'   => 'WIT — Waktu Indonesia Timur (UTC+9)',
+                ],
+                'Asia' => [
+                  'Asia/Singapore'  => 'Singapore (UTC+8)',
+                  'Asia/Kuala_Lumpur' => 'Kuala Lumpur (UTC+8)',
+                  'Asia/Bangkok'    => 'Bangkok (UTC+7)',
+                  'Asia/Ho_Chi_Minh'=> 'Ho Chi Minh (UTC+7)',
+                  'Asia/Manila'     => 'Manila (UTC+8)',
+                  'Asia/Tokyo'      => 'Tokyo (UTC+9)',
+                  'Asia/Seoul'      => 'Seoul (UTC+9)',
+                  'Asia/Shanghai'   => 'Shanghai (UTC+8)',
+                  'Asia/Kolkata'    => 'India (UTC+5:30)',
+                  'Asia/Dubai'      => 'Dubai (UTC+4)',
+                  'Asia/Riyadh'     => 'Riyadh (UTC+3)',
+                ],
+                'Eropa & Amerika' => [
+                  'UTC'             => 'UTC (UTC+0)',
+                  'Europe/London'   => 'London (UTC+0/+1)',
+                  'Europe/Paris'    => 'Paris (UTC+1/+2)',
+                  'America/New_York'=> 'New York (UTC-5/-4)',
+                  'America/Los_Angeles' => 'Los Angeles (UTC-8/-7)',
+                ],
+              ];
+              ?>
+              <select name="timezone" class="input">
+                <?php foreach ($tz_groups as $group => $zones): ?>
+                <optgroup label="<?= ae($group) ?>">
+                  <?php foreach ($zones as $tz => $label): ?>
+                  <option value="<?= ae($tz) ?>" <?= $tz_current === $tz ? 'selected' : '' ?>><?= ae($label) ?></option>
+                  <?php endforeach; ?>
+                </optgroup>
+                <?php endforeach; ?>
+              </select>
+              <p class="form-description">Zona waktu untuk tampilan tanggal/jam lead, analitik, dan log. Saat ini server: <strong><?= ae(date_default_timezone_get()) ?></strong> — Waktu sekarang: <strong><?= date('d/m/Y H:i:s') ?></strong></p>
             </div>
           </div>
           <div class="card-footer" style="justify-content:flex-end;">
@@ -267,6 +314,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
               ['Base Slug',       'k (fixed)'],
               ['OpenSSL',         extension_loaded('openssl') ? 'Aktif' : 'Tidak tersedia'],
               ['cURL',            extension_loaded('curl')    ? 'Aktif' : 'Tidak tersedia'],
+              ['Zona Waktu',       date_default_timezone_get() . ' — ' . date('d/m/Y H:i:s')],
               ['Total Lead',      number_format(Lead::count())],
               ['Total Kampanye',  number_format(DB::count('campaigns'))],
               ['Total Operator',  number_format(DB::count('operators'))],
