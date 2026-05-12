@@ -60,10 +60,13 @@ class PublicController
 
         if ($campaign->type === 'wa_link') {
             // Link campaigns: skip landing page, go straight to thanks
-            $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
-            $qs  = http_build_query(array_filter([
+            $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
+            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $curUrl = $scheme . '://' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '') . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
+            $qs     = http_build_query(array_filter([
                 '_vid'     => $vid,
-                '_src'     => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+                '_src'     => $curUrl,
+                '_ref'     => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
                 'click_id' => isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : ''),
             ]));
             header('Location: ' . Helper::campaignUrl($campaign) . '/thanks' . ($qs ? '?' . $qs : ''), true, 302);
@@ -282,6 +285,7 @@ class PublicController
             // Always create a click record for wa_link thanks visits
             $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : (isset($_GET['_vid']) ? $_GET['_vid'] : '');
             $srcUrl = isset($_GET['_src']) ? substr($_GET['_src'], 0, 2000) : '';
+            $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
             // Detect repeat click via cookie
             $isRepeat = $campaign->double_lead_enabled && $vid
                 ? (bool)DB::val(
@@ -298,7 +302,7 @@ class PublicController
                     'email'       => '',
                     '_vid'        => $vid,
                     'source_url'  => $srcUrl,
-                    'referrer'    => isset($_SERVER['HTTP_REFERER']) ? substr($_SERVER['HTTP_REFERER'], 0, 2000) : '',
+                    'referrer'    => $refUrl,
                     'click_id'    => isset($_GET['click_id']) ? $_GET['click_id'] : '',
                 ]);
                 if ($isRepeat) Lead::markDouble($leadId);
@@ -317,19 +321,24 @@ class PublicController
 
         // ── Server-side pixels: thanks_page — full backend tracking ────────
         $decrypted = null;
-        $sourceUrl = isset($_GET['_src'])      ? $_GET['_src']      : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
-        $clickId   = isset($_GET['click_id'])  ? $_GET['click_id']  : (isset($_GET['clickid']) ? $_GET['clickid'] : '');
+        $srcFromGet  = isset($_GET['_src']) ? substr($_GET['_src'], 0, 2000) : '';
+        $refFromGet  = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
+        $clickId     = isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : '');
 
         if (!$isDouble && !$isBlocked) {
             if ($lead) $decrypted = Lead::decrypt(clone $lead);
+
+            // source_url: prefer what's stored in lead (set from landing page JS), then _src param
+            $sourceUrl = ($decrypted && !empty($decrypted->source_url)) ? $decrypted->source_url : $srcFromGet;
+            $referrer  = ($decrypted && !empty($decrypted->referrer))   ? $decrypted->referrer   : $refFromGet;
 
             $eventData = [
                 'name'         => $decrypted && isset($decrypted->name)   ? $decrypted->name   : '',
                 'phone'        => $decrypted && isset($decrypted->phone)  ? $decrypted->phone  : '',
                 'email'        => $decrypted && isset($decrypted->email)  ? $decrypted->email  : '',
                 'product_name' => isset($campaign->product_name) ? $campaign->product_name : '',
-                'source_url'   => $decrypted && isset($decrypted->source_url) ? $decrypted->source_url : $sourceUrl,
-                'referrer'     => $decrypted && isset($decrypted->referrer)   ? $decrypted->referrer   : $sourceUrl,
+                'source_url'   => $sourceUrl,
+                'referrer'     => $referrer,
                 'ip'           => Helper::getClientIp(),
                 'user_agent'   => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
                 'click_id'     => $clickId,

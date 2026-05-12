@@ -139,8 +139,8 @@ $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
 
     <form action="<?= Helper::e($submitUrl) ?>" method="POST">
       <input type="hidden" name="_vid" value="<?= Helper::e($vid) ?>">
-      <input type="hidden" name="source_url" value="<?= Helper::e((knk_is_https() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['REQUEST_URI'] ?? '/')) ?>">
-      <input type="hidden" name="referrer" value="<?= Helper::e($_SERVER['HTTP_REFERER'] ?? '') ?>">
+      <input type="hidden" name="source_url" id="knk-source-url" value="<?= Helper::e((knk_is_https() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . ($_SERVER['REQUEST_URI'] ?? '/')) ?>">
+      <input type="hidden" name="referrer" id="knk-referrer" value="<?= Helper::e($_SERVER['HTTP_REFERER'] ?? '') ?>">
 
       <?php
       // Pass click_id from URL to form
@@ -185,5 +185,14 @@ $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
   </div>
 </div>
 
+<script>
+// Override source_url with actual page URL (important for embed: JS runs on landing page, not konektor server)
+(function() {
+  var su = document.getElementById('knk-source-url');
+  var rf = document.getElementById('knk-referrer');
+  if (su && window.location.href) su.value = window.location.href;
+  if (rf && !rf.value && document.referrer) rf.value = document.referrer;
+})();
+</script>
 </body>
 </html>

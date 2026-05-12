@@ -176,7 +176,7 @@ standalone/
 
 ## 🙏 Credit
 
-** [Hanif Pramono](https://hanifprm.my.id)**  
+**Dibuat Oleh [Hanif Pramono](https://hanifprm.my.id)**  
 🔗 [https://hanifprm.my.id](https://hanifprm.my.id)
 
 ---
