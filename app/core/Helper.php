@@ -200,6 +200,45 @@ class Helper
         return true;
     }
 
+    /**
+     * Detect automated bots/crawlers that should not create leads.
+     * Covers: social media link previewers, search engine bots, monitoring agents.
+     */
+    public static function isBotRequest()
+    {
+        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+        if ($ua === '') return true; // no UA = likely bot/script
+
+        $botPatterns = [
+            'facebookexternalhit', 'Facebot',          // Meta/Facebook preview
+            'Twitterbot',                               // Twitter/X card preview
+            'LinkedInBot',                              // LinkedIn preview
+            'WhatsApp',                                 // WhatsApp link preview
+            'TelegramBot',                              // Telegram preview
+            'Discordbot',                               // Discord preview
+            'Slackbot', 'slack-imgproxy',               // Slack preview
+            'Pinterest',                                // Pinterest crawler
+            'Googlebot', 'Googlebot-Image',             // Google search
+            'bingbot', 'BingPreview',                   // Bing
+            'DuckDuckBot',                              // DuckDuck Go
+            'YandexBot',                                // Yandex
+            'Baiduspider',                              // Baidu
+            'ia_archiver',                              // Alexa/Wayback Machine
+            'AhrefsBot', 'SemrushBot', 'MJ12bot',      // SEO tools
+            'Screaming Frog', 'SiteAuditBot',          // Audit crawlers
+            'Bytespider',                               // ByteDance/TikTok crawler
+            'HeadlessChrome', 'PhantomJS',              // Headless browsers
+            'python-requests', 'Go-http-client',        // Script crawlers
+            'curl/', 'Wget/',                           // CLI tools
+        ];
+
+        foreach ($botPatterns as $pattern) {
+            if (stripos($ua, $pattern) !== false) return true;
+        }
+
+        return false;
+    }
+
     public static function fireWebhook($event, $data)
     {
         $url    = Settings::get('webhook_url');

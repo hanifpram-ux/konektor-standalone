@@ -40,6 +40,9 @@ class PublicController
         $campaign = Campaign::findBySlug(isset($params['slug']) ? $params['slug'] : '');
         if (!$campaign) { http_response_code(404); include KONEKTOR_ROOT . '/public/404.php'; return; }
 
+        // Block bots from logging page_load events and creating wa_link leads
+        if (Helper::isBotRequest()) { http_response_code(204); return; }
+
         // Domain whitelist check
         $allowed = json_decode(isset($campaign->allowed_domains) ? $campaign->allowed_domains : '[]', true);
         if (!empty($allowed) && !in_array(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '', $allowed)) {
@@ -60,12 +63,15 @@ class PublicController
 
         if ($campaign->type === 'wa_link') {
             // Link campaigns: skip landing page, go straight to thanks
-            $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
-            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-            $curUrl = $scheme . '://' . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '') . (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
-            $qs     = http_build_query(array_filter([
+            $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
+            // _src: prefer param injected by embed JS (window.location.href of landing page),
+            // fallback to HTTP_REFERER (for direct link clicks from external pages)
+            $src = isset($_GET['_src']) && $_GET['_src'] !== ''
+                ? $_GET['_src']
+                : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
+            $qs  = http_build_query(array_filter([
                 '_vid'     => $vid,
-                '_src'     => $curUrl,
+                '_src'     => $src,
                 '_ref'     => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
                 'click_id' => isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : ''),
             ]));
@@ -87,6 +93,14 @@ class PublicController
 
         // CORS — send on actual POST response (OPTIONS preflight handled by Router)
         self::setCorsHeaders($campaign);
+
+        // Block known bots
+        if (Helper::isBotRequest()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            return;
+        }
 
         // Rate limit: 20 form submissions per IP per minute
         $ip = Helper::getClientIp();
@@ -167,9 +181,10 @@ class PublicController
             return;
         }
 
-        // Duplicate lead check
+        // Duplicate lead check (pass source_url for domain/page scope)
+        $sourceUrlForDouble = substr(strip_tags(isset($data['source_url']) ? $data['source_url'] : ''), 0, 2000);
         $isDouble = $campaign->double_lead_enabled
-            ? Lead::checkDouble($campaign->id, $phone, $email, $vid)
+            ? Lead::checkDouble($campaign->id, $phone, $email, $vid, $ip, $sourceUrlForDouble)
             : false;
 
         // Rotator — pick operator
@@ -280,18 +295,21 @@ class PublicController
         // For wa_link: always create a click record on thanks page visit
         // (no form submit — every visit to thanks IS the click event)
         if ($campaign->type === 'wa_link') {
+            // Reject bot/crawler requests — they must not create leads
+            if (Helper::isBotRequest()) {
+                http_response_code(204);
+                return;
+            }
+
             $operator = Rotator::pick($campaign->id);
 
             // Always create a click record for wa_link thanks visits
             $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : (isset($_GET['_vid']) ? $_GET['_vid'] : '');
             $srcUrl = isset($_GET['_src']) ? substr($_GET['_src'], 0, 2000) : '';
             $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
-            // Detect repeat click via cookie
-            $isRepeat = $campaign->double_lead_enabled && $vid
-                ? (bool)DB::val(
-                    "SELECT id FROM " . DB::t('leads') . " WHERE campaign_id=? AND cookie_id=? LIMIT 1",
-                    [$campaign->id, $vid]
-                )
+            // Detect repeat click via cookie + IP (pass srcUrl for domain/page scope)
+            $isRepeat = $campaign->double_lead_enabled
+                ? Lead::checkDouble($campaign->id, '', '', $vid, '', $srcUrl)
                 : false;
             try {
                 $leadId = Lead::create([

@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Always update site_url from current request dynamically
         Settings::set('site_url', currentSiteUrl());
         $allowed = ['app_name','cs_panel_slug','telegram_bot_token','encrypt_lead_data',
-                    'webhook_url','webhook_secret','timezone'];
+                    'webhook_url','webhook_secret','timezone','double_lead_scope'];
         foreach ($allowed as $k) {
             if (isset($_POST[$k])) Settings::set($k, strip_tags(trim($_POST[$k])));
         }
@@ -185,6 +185,27 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
                 <option value="0" <?= ($s['encrypt_lead_data'] ?? '1') === '0' ? 'selected' : '' ?>>Nonaktif</option>
               </select>
               <p class="form-description">Data nama, HP, email, dan alamat lead dienkripsi di database.</p>
+            </div>
+
+            <div>
+              <label class="label">Lingkup Deteksi Double Lead</label>
+              <?php $dls = $s['double_lead_scope'] ?? 'campaign'; ?>
+              <select name="double_lead_scope" class="input">
+                <option value="campaign" <?= $dls === 'campaign' ? 'selected' : '' ?>>Per Kampanye — deteksi hanya dalam kampanye yang sama</option>
+                <option value="domain"   <?= $dls === 'domain'   ? 'selected' : '' ?>>Per Domain — deteksi semua kampanye dari domain/website yang sama</option>
+                <option value="page"     <?= $dls === 'page'     ? 'selected' : '' ?>>Per Halaman (Slug) — deteksi semua kampanye dari URL halaman yang persis sama</option>
+              </select>
+              <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:hsl(var(--muted-foreground));">
+                <div style="padding:8px 10px;background:hsl(var(--muted));border-radius:6px;">
+                  <strong style="color:hsl(var(--foreground));">Per Kampanye:</strong> Jika 1 halaman ada 2 kampanye (form + link), keduanya dihitung terpisah. Pengunjung bisa submit form dan klik link tanpa terdeteksi double.
+                </div>
+                <div style="padding:8px 10px;background:hsl(var(--muted));border-radius:6px;">
+                  <strong style="color:hsl(var(--foreground));">Per Domain:</strong> Jika pengunjung sudah submit/klik di domain <code>domainmu.com</code>, semua kampanye di domain itu terdeteksi double — termasuk form dan link di halaman berbeda.
+                </div>
+                <div style="padding:8px 10px;background:hsl(var(--muted));border-radius:6px;">
+                  <strong style="color:hsl(var(--foreground));">Per Halaman:</strong> Jika 1 halaman ada form + link, submit salah satu = double untuk keduanya. Tapi halaman lain di domain yang sama tidak terpengaruh.
+                </div>
+              </div>
             </div>
 
           </div>

@@ -37,24 +37,72 @@ class Lead
         return DB::insert('leads', $row);
     }
 
-    public static function checkDouble($campaignId, $phone, $email, $vid = '')
+    /**
+     * Check if a lead is a duplicate.
+     * Scope is controlled by the global setting 'double_lead_scope':
+     *   'campaign' — only within this campaign (default)
+     *   'domain'   — any campaign whose leads share the same source domain
+     *   'page'     — any campaign whose leads share the exact same source URL/page
+     *
+     * Checks (in order): fingerprint (form only), cookie/VID, IP address.
+     *
+     * @param int    $campaignId
+     * @param string $phone      Empty for wa_link
+     * @param string $email      Empty for wa_link
+     * @param string $vid        Cookie ID
+     * @param string $ip         Auto-detected if empty
+     * @param string $sourceUrl  Current page URL (for domain/page scope)
+     */
+    public static function checkDouble($campaignId, $phone = '', $email = '', $vid = '', $ip = '', $sourceUrl = '')
     {
-        $phone       = Helper::sanitizePhone($phone);
-        $fingerprint = Crypto::fingerprint($phone, $email);
+        $campaignId = (int)$campaignId;
+        $ip         = $ip ?: Helper::getClientIp();
+        $scope      = Settings::get('double_lead_scope', 'campaign');
 
-        $fp = DB::val(
-            "SELECT id FROM " . DB::t('leads') . " WHERE campaign_id = ? AND fingerprint = ? LIMIT 1",
-            [(int)$campaignId, $fingerprint]
-        );
-        if ($fp) return true;
-
-        if ($vid) {
-            $ck = DB::val(
-                "SELECT id FROM " . DB::t('leads') . " WHERE campaign_id = ? AND cookie_id = ? LIMIT 1",
-                [(int)$campaignId, $vid]
-            );
-            if ($ck) return true;
+        // Build WHERE clause based on scope
+        if ($scope === 'page' && $sourceUrl) {
+            // All leads from the exact same page URL
+            $scopeWhere  = 'source_url = ?';
+            $scopeParams = [substr($sourceUrl, 0, 2000)];
+        } elseif ($scope === 'domain' && $sourceUrl) {
+            // All leads from the same domain (extract host from source_url)
+            $host = parse_url($sourceUrl, PHP_URL_HOST);
+            if ($host) {
+                $scopeWhere  = "(source_url LIKE ? OR source_url LIKE ?)";
+                $scopeParams = ['http://' . $host . '%', 'https://' . $host . '%'];
+            } else {
+                $scopeWhere  = 'campaign_id = ?';
+                $scopeParams = [$campaignId];
+            }
+        } else {
+            // Per campaign (default)
+            $scopeWhere  = 'campaign_id = ?';
+            $scopeParams = [$campaignId];
         }
+
+        $t = DB::t('leads');
+
+        // 1. Fingerprint (phone+email) — only meaningful for form leads
+        if ($phone !== '' || $email !== '') {
+            $fingerprint = Crypto::fingerprint(Helper::sanitizePhone($phone), $email);
+            if ($fingerprint && DB::val(
+                "SELECT id FROM {$t} WHERE {$scopeWhere} AND fingerprint = ? AND is_double = 0 LIMIT 1",
+                array_merge($scopeParams, [$fingerprint])
+            )) return true;
+        }
+
+        // 2. Cookie / VID
+        if ($vid && DB::val(
+            "SELECT id FROM {$t} WHERE {$scopeWhere} AND cookie_id = ? AND is_double = 0 LIMIT 1",
+            array_merge($scopeParams, [$vid])
+        )) return true;
+
+        // 3. IP address
+        if ($ip && DB::val(
+            "SELECT id FROM {$t} WHERE {$scopeWhere} AND ip_address = ? AND is_double = 0 LIMIT 1",
+            array_merge($scopeParams, [$ip])
+        )) return true;
+
         return false;
     }
 
