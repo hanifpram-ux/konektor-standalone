@@ -387,6 +387,9 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
             <button onclick="openSnippet(<?= $c->id ?>)" class="btn btn-outline btn-sm" title="Dapatkan kode embed / link">
               <?= icon('code') ?>
             </button>
+            <a href="../leads/index.php?campaign_id=<?= $c->id ?>" class="btn btn-outline btn-sm" title="Lihat Leads kampanye ini">
+              <?= icon('users') ?>
+            </a>
             <a href="create.php?id=<?= $c->id ?>" class="btn btn-outline btn-sm" title="Edit"><?= icon('pencil') ?></a>
             <form method="POST" style="display:inline;" onsubmit="return confirm('Duplikat kampanye ini?')">
               <input type="hidden" name="_duplicate_id" value="<?= $c->id ?>">

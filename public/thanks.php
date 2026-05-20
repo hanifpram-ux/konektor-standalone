@@ -9,15 +9,16 @@ $formCs  = isset($formCfg['custom_style']) && is_array($formCfg['custom_style'])
 $formTpl = isset($formCfg['template']) ? $formCfg['template'] : 'modern';
 
 $schemes = [
-    'modern'   => ['bg'=>'#f8fafc', 'card'=>'#ffffff', 'accent'=>'#2563eb', 'text'=>'#0f172a', 'shadow'=>'0 8px 32px rgba(0,0,0,.08)'],
-    'classic'  => ['bg'=>'#fff8f0', 'card'=>'#ffffff', 'accent'=>'#dc2626', 'text'=>'#1a1a1a', 'shadow'=>'0 4px 16px rgba(220,38,38,.10)'],
-    'minimal'  => ['bg'=>'#fafafa', 'card'=>'#ffffff', 'accent'=>'#111111', 'text'=>'#111111', 'shadow'=>'none'],
-    'card'     => ['bg'=>'#eff6ff', 'card'=>'#ffffff', 'accent'=>'#2563eb', 'text'=>'#0f172a', 'shadow'=>'0 8px 32px rgba(37,99,235,.12)'],
-    'gradient' => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)', 'card'=>'rgba(255,255,255,.10)', 'accent'=>'#38bdf8', 'text'=>'#e0f2fe', 'shadow'=>'0 8px 40px rgba(0,0,0,.3)'],
-    'rose'     => ['bg'=>'#fff1f2', 'card'=>'#ffffff', 'accent'=>'#e11d48', 'text'=>'#0f172a', 'shadow'=>'0 4px 20px rgba(225,29,72,.10)'],
-    'forest'   => ['bg'=>'#f0fdf4', 'card'=>'#ffffff', 'accent'=>'#16a34a', 'text'=>'#0f172a', 'shadow'=>'0 4px 20px rgba(22,163,74,.10)'],
-    'sunset'   => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)', 'card'=>'rgba(255,255,255,.97)', 'accent'=>'#ee5a24', 'text'=>'#2d3436', 'shadow'=>'0 8px 32px rgba(238,90,36,.15)'],
-    'ocean'    => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)', 'card'=>'rgba(255,255,255,.14)', 'accent'=>'#48cae4', 'text'=>'#caf0f8', 'shadow'=>'0 8px 40px rgba(0,119,182,.3)'],
+    'modern'       => ['bg'=>'#f8fafc', 'card'=>'#ffffff', 'accent'=>'#2563eb', 'text'=>'#0f172a', 'shadow'=>'0 8px 32px rgba(0,0,0,.08)'],
+    'classic'      => ['bg'=>'#fff8f0', 'card'=>'#ffffff', 'accent'=>'#dc2626', 'text'=>'#1a1a1a', 'shadow'=>'0 4px 16px rgba(220,38,38,.10)'],
+    'classic_flat' => ['bg'=>'#b7d09a', 'card'=>'#b7d09a', 'accent'=>'#FF5000', 'text'=>'#000000', 'shadow'=>'none'],
+    'minimal'      => ['bg'=>'#fafafa', 'card'=>'#ffffff', 'accent'=>'#111111', 'text'=>'#111111', 'shadow'=>'none'],
+    'card'         => ['bg'=>'#eff6ff', 'card'=>'#ffffff', 'accent'=>'#2563eb', 'text'=>'#0f172a', 'shadow'=>'0 8px 32px rgba(37,99,235,.12)'],
+    'gradient'     => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)', 'card'=>'rgba(255,255,255,.10)', 'accent'=>'#38bdf8', 'text'=>'#e0f2fe', 'shadow'=>'0 8px 40px rgba(0,0,0,.3)'],
+    'rose'         => ['bg'=>'#fff1f2', 'card'=>'#ffffff', 'accent'=>'#e11d48', 'text'=>'#0f172a', 'shadow'=>'0 4px 20px rgba(225,29,72,.10)'],
+    'forest'       => ['bg'=>'#f0fdf4', 'card'=>'#ffffff', 'accent'=>'#16a34a', 'text'=>'#0f172a', 'shadow'=>'0 4px 20px rgba(22,163,74,.10)'],
+    'sunset'       => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)', 'card'=>'rgba(255,255,255,.97)', 'accent'=>'#ee5a24', 'text'=>'#2d3436', 'shadow'=>'0 8px 32px rgba(238,90,36,.15)'],
+    'ocean'        => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)', 'card'=>'rgba(255,255,255,.14)', 'accent'=>'#48cae4', 'text'=>'#caf0f8', 'shadow'=>'0 8px 40px rgba(0,119,182,.3)'],
 ];
 $sc = isset($schemes[$formTpl]) ? $schemes[$formTpl] : $schemes['modern'];
 
@@ -27,7 +28,8 @@ $cardColor = !empty($theme['card_color'])   ? $theme['card_color']   : (!empty($
 $accent    = !empty($theme['accent_color']) ? $theme['accent_color'] : (!empty($formCs['color_accent']) ? $formCs['color_accent'] : $sc['accent']);
 $textColor = !empty($theme['text_color'])   ? $theme['text_color']   : (!empty($formCs['color_text'])   ? $formCs['color_text']   : $sc['text']);
 $shadow    = $sc['shadow'];
-$radius    = !empty($formCs['border_radius']) ? $formCs['border_radius'] : '16px';
+$radiusDefault = ($formTpl === 'classic_flat') ? '3px' : '16px';
+$radius    = !empty($formCs['border_radius']) ? $formCs['border_radius'] : $radiusDefault;
 
 $heading   = !empty($theme['heading'])     ? $theme['heading']     : 'Terima Kasih!';
 $desc      = !empty($cfg['description'])   ? $cfg['description']   : 'Pesanan Anda telah kami terima. Tim kami akan segera menghubungi Anda.';
@@ -169,6 +171,10 @@ body {
 }
 .tk-btn:hover { opacity: .88; transform: translateY(-1px); }
 .tk-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+<?php if ($formTpl === 'classic_flat'): ?>
+.tk-btn { border-radius: 3px; height: 50px; padding: 0 20px; }
+.tk-btn:hover { opacity: 1; background: #e04800; transform: none; color: #fff!important; text-decoration: none!important; }
+<?php endif; ?>
 @media (max-width: 480px) {
   body { padding: 16px; }
   .tk-card { padding: 36px 24px 32px; }

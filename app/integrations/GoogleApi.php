@@ -102,4 +102,32 @@ HTML;
         return $output;
     }
 
+    /**
+     * Server-side conversion payload builder.
+     * Google Ads Conversion Upload requires OAuth2 dev token — not supported here.
+     * Returns the payload array for logging/preview; no HTTP request is made.
+     */
+    public static function sendConversion($eventType, $leadData, $cfg)
+    {
+        $convId = trim(isset($cfg['conversion_id']) ? $cfg['conversion_id'] : '');
+        if (!$convId) return null;
+
+        $labelMap = [
+            'page_load'   => isset($cfg['page_load_label'])   ? $cfg['page_load_label']   : '',
+            'form_submit' => isset($cfg['form_submit_label']) ? $cfg['form_submit_label'] : '',
+            'thanks_page' => isset($cfg['thanks_page_label']) ? $cfg['thanks_page_label'] : '',
+        ];
+        $label = trim(isset($labelMap[$eventType]) ? $labelMap[$eventType] : '');
+
+        return [
+            'conversion_id'    => $convId,
+            'conversion_label' => $label,
+            'gclid'            => isset($leadData['click_id']) ? $leadData['click_id'] : '',
+            'conversion_time'  => date('c'),
+            'value'            => !empty($cfg['value']) ? (float)$cfg['value'] : null,
+            'currency'         => isset($cfg['currency']) ? $cfg['currency'] : 'IDR',
+            'note'             => 'Server-side upload requires OAuth2 dev token. This is a preview payload only.',
+        ];
+    }
+
 }

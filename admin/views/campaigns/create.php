@@ -270,15 +270,16 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="linkTplGrid">
             <?php
             $linkTpls = [
-              'modern'   => ['Modern',   'Biru profesional', '#ffffff','#2563eb'],
-              'classic'  => ['Classic',  'Merah klasik',     '#fff8f0','#dc2626'],
-              'minimal'  => ['Minimal',  'Hitam putih',      '#fafafa','#111111'],
-              'card'     => ['Card',     'Latar biru muda',  '#eff6ff','#2563eb'],
-              'gradient' => ['Gradient', 'Biru tua gelap',   '#1e3a5f','#38bdf8'],
-              'rose'     => ['Rose',     'Pink feminine',    '#fff1f2','#e11d48'],
-              'forest'   => ['Forest',   'Hijau segar',      '#f0fdf4','#16a34a'],
-              'sunset'   => ['Sunset',   'Oranye hangat',    '#ff6b6b','#ee5a24'],
-              'ocean'    => ['Ocean',    'Biru laut',        '#0077b6','#48cae4'],
+              'modern'       => ['Modern',       'Biru profesional',    '#ffffff','#2563eb'],
+              'classic'      => ['Classic',      'Merah klasik',        '#fff8f0','#dc2626'],
+              'classic_flat' => ['Classic Flat', 'Hijau daun + oranye', '#b7d09a','#FF5000'],
+              'minimal'      => ['Minimal',      'Hitam putih',         '#fafafa','#111111'],
+              'card'         => ['Card',         'Latar biru muda',     '#eff6ff','#2563eb'],
+              'gradient'     => ['Gradient',     'Biru tua gelap',      '#1e3a5f','#38bdf8'],
+              'rose'         => ['Rose',         'Pink feminine',       '#fff1f2','#e11d48'],
+              'forest'       => ['Forest',       'Hijau segar',         '#f0fdf4','#16a34a'],
+              'sunset'       => ['Sunset',       'Oranye hangat',       '#ff6b6b','#ee5a24'],
+              'ocean'        => ['Ocean',        'Biru laut',           '#0077b6','#48cae4'],
             ];
             foreach ($linkTpls as $tid => [$tl,$td,$tbg,$tacc]): ?>
             <button type="button" class="tpl-card" id="ltpl_<?= $tid ?>" onclick="KNK.setLinkTpl('<?= $tid ?>')">
@@ -366,15 +367,16 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="tplGrid">
           <?php
           $formTpls = [
-            'modern'  =>['Modern',  'Biru profesional', '#ffffff','#2563eb'],
-            'classic' =>['Classic', 'Merah klasik',     '#ffffff','#dc2626'],
-            'minimal' =>['Minimal', 'Hitam putih',      '#fafafa','#111111'],
-            'card'    =>['Card',    'Latar biru muda',  '#eff6ff','#2563eb'],
-            'gradient'=>['Gradient','Biru tua gelap',   '#1e3a5f','#38bdf8'],
-            'rose'    =>['Rose',    'Pink feminine',    '#fff1f2','#e11d48'],
-            'forest'  =>['Forest',  'Hijau segar',      '#f0fdf4','#16a34a'],
-            'sunset'  =>['Sunset',  'Oranye hangat',    '#fff3e0','#ee5a24'],
-            'ocean'   =>['Ocean',   'Biru laut',        '#e0f7fa','#0077b6'],
+            'modern'       =>['Modern',       'Biru profesional',    '#ffffff','#2563eb'],
+            'classic'      =>['Classic',      'Merah klasik',        '#ffffff','#dc2626'],
+            'classic_flat' =>['Classic Flat', 'Hijau daun + oranye', '#b7d09a','#FF5000'],
+            'minimal'      =>['Minimal',      'Hitam putih',         '#fafafa','#111111'],
+            'card'         =>['Card',         'Latar biru muda',     '#eff6ff','#2563eb'],
+            'gradient'     =>['Gradient',     'Biru tua gelap',      '#1e3a5f','#38bdf8'],
+            'rose'         =>['Rose',         'Pink feminine',       '#fff1f2','#e11d48'],
+            'forest'       =>['Forest',       'Hijau segar',         '#f0fdf4','#16a34a'],
+            'sunset'       =>['Sunset',       'Oranye hangat',       '#fff3e0','#ee5a24'],
+            'ocean'        =>['Ocean',        'Biru laut',           '#e0f7fa','#0077b6'],
           ];
           foreach ($formTpls as $tid => [$tl,$td,$tbg,$tacc]): ?>
           <button type="button" class="tpl-card" id="tpl_<?= $tid ?>" onclick="KNK.setFormTpl('<?= $tid ?>')">
@@ -1259,15 +1261,16 @@ const KNK = (() => {
 
   // ── Scheme lookup table (shared between form and link) ───────────────
   var ALL_SCHEMES = {
-    modern:   {bg:'#f8fafc', card:'#ffffff', accent:'#2563eb', text:'#0f172a'},
-    classic:  {bg:'#fff8f0', card:'#ffffff', accent:'#dc2626', text:'#1a1a1a'},
-    minimal:  {bg:'#fafafa', card:'#ffffff', accent:'#111111', text:'#111111'},
-    card:     {bg:'#eff6ff', card:'#ffffff', accent:'#2563eb', text:'#0f172a'},
-    gradient: {bg:'#0f2027', card:'rgba(255,255,255,.12)', accent:'#38bdf8', text:'#e0f2fe'},
-    rose:     {bg:'#fff1f2', card:'#ffffff', accent:'#e11d48', text:'#0f172a'},
-    forest:   {bg:'#f0fdf4', card:'#ffffff', accent:'#16a34a', text:'#0f172a'},
-    sunset:   {bg:'#ff6b6b', card:'rgba(255,255,255,.97)', accent:'#ee5a24', text:'#2d3436'},
-    ocean:    {bg:'#0077b6', card:'rgba(255,255,255,.14)', accent:'#48cae4', text:'#caf0f8'},
+    modern:        {bg:'#f8fafc', card:'#ffffff',               accent:'#2563eb', text:'#0f172a'},
+    classic:       {bg:'#fff8f0', card:'#ffffff',               accent:'#dc2626', text:'#1a1a1a'},
+    classic_flat:  {bg:'#b7d09a', card:'#b7d09a',               accent:'#FF5000', text:'#000000'},
+    minimal:       {bg:'#fafafa', card:'#ffffff',               accent:'#111111', text:'#111111'},
+    card:          {bg:'#eff6ff', card:'#ffffff',               accent:'#2563eb', text:'#0f172a'},
+    gradient:      {bg:'#0f2027', card:'rgba(255,255,255,.12)', accent:'#38bdf8', text:'#e0f2fe'},
+    rose:          {bg:'#fff1f2', card:'#ffffff',               accent:'#e11d48', text:'#0f172a'},
+    forest:        {bg:'#f0fdf4', card:'#ffffff',               accent:'#16a34a', text:'#0f172a'},
+    sunset:        {bg:'#ff6b6b', card:'rgba(255,255,255,.97)', accent:'#ee5a24', text:'#2d3436'},
+    ocean:         {bg:'#0077b6', card:'rgba(255,255,255,.14)', accent:'#48cae4', text:'#caf0f8'},
   };
 
   // Sync thanks theme colors from the active form/link scheme.
@@ -1521,43 +1524,50 @@ const KNK = (() => {
     if (snackOn) pxBadges.push('<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;background:#e4372c;color:#fff;padding:3px 8px;border-radius:99px;"><span style="width:6px;height:6px;border-radius:50%;background:#fff;"></span>Snack</span>');
     var pxBar = pxBadges.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' + pxBadges.join('') + '</div>' : '';
 
-    var S={modern:{bg:'#fff',acc:'#2563eb',txt:'#0f172a',bdr:'#e2e8f0',btnC:'#fff',inp:'#f8fafc'},classic:{bg:'#fff',acc:'#dc2626',txt:'#1a1a1a',bdr:'#d4a27a',btnC:'#fff',inp:'#fff'},minimal:{bg:'#fafafa',acc:'#111',txt:'#111',bdr:'#e2e8f0',btnC:'#fff',inp:'#fff'},card:{bg:'#eff6ff',acc:'#2563eb',txt:'#0f172a',bdr:'#bfdbfe',btnC:'#fff',inp:'#fff'},gradient:{bg:'#1e3a5f',acc:'#38bdf8',txt:'#e0f2fe',bdr:'rgba(255,255,255,.2)',btnC:'#0f172a',inp:'rgba(255,255,255,.1)'},rose:{bg:'#fff1f2',acc:'#e11d48',txt:'#0f172a',bdr:'#fecdd3',btnC:'#fff',inp:'#fff'},forest:{bg:'#f0fdf4',acc:'#16a34a',txt:'#0f172a',bdr:'#bbf7d0',btnC:'#fff',inp:'#fff'},sunset:{bg:'#fff3e0',acc:'#ee5a24',txt:'#2d3436',bdr:'rgba(238,90,36,.3)',btnC:'#fff',inp:'#fff'},ocean:{bg:'#e0f7fa',acc:'#0077b6',txt:'#003049',bdr:'#90e0ef',btnC:'#fff',inp:'#fff'}};
+    var S={modern:{bg:'#fff',acc:'#2563eb',txt:'#0f172a',bdr:'#e2e8f0',btnC:'#fff',inp:'#f8fafc',card:'#fff'},classic:{bg:'#fff',acc:'#dc2626',txt:'#1a1a1a',bdr:'#d4a27a',btnC:'#fff',inp:'#fff',card:'#fff'},classic_flat:{bg:'#b7d09a',acc:'#FF5000',txt:'#000',bdr:'#ccc',btnC:'#fff',inp:'#fff',card:'#b7d09a'},minimal:{bg:'#fafafa',acc:'#111',txt:'#111',bdr:'#e2e8f0',btnC:'#fff',inp:'#fff',card:'#fff'},card:{bg:'#eff6ff',acc:'#2563eb',txt:'#0f172a',bdr:'#bfdbfe',btnC:'#fff',inp:'#fff',card:'#fff'},gradient:{bg:'#1e3a5f',acc:'#38bdf8',txt:'#e0f2fe',bdr:'rgba(255,255,255,.2)',btnC:'#0f172a',inp:'rgba(255,255,255,.1)',card:'rgba(255,255,255,.08)'},rose:{bg:'#fff1f2',acc:'#e11d48',txt:'#0f172a',bdr:'#fecdd3',btnC:'#fff',inp:'#fff',card:'#fff'},forest:{bg:'#f0fdf4',acc:'#16a34a',txt:'#0f172a',bdr:'#bbf7d0',btnC:'#fff',inp:'#fff',card:'#fff'},sunset:{bg:'#fff3e0',acc:'#ee5a24',txt:'#2d3436',bdr:'rgba(238,90,36,.3)',btnC:'#fff',inp:'#fff',card:'rgba(255,255,255,.95)'},ocean:{bg:'#e0f7fa',acc:'#0077b6',txt:'#003049',bdr:'#90e0ef',btnC:'#fff',inp:'#fff',card:'#fff'}};
     var SZ={compact:{w:'380px',p:'20px 18px',fs:'13px',bfs:'14px'},default:{w:'480px',p:'28px 24px',fs:'14px',bfs:'15px'},large:{w:'600px',p:'40px 36px',fs:'15px',bfs:'16px'},fullwidth:{w:'100%',p:'28px 24px',fs:'14px',bfs:'15px'}};
     var sc=S[d.formCfg.template]||S.modern, sz=SZ[d.formCfg.size]||SZ.default, cs=d.formCfg.custom_style||{};
     var bg=cs.color_bg||sc.bg, acc=cs.color_accent||sc.acc, txt=cs.color_text||sc.txt;
     var bdr=cs.color_border||sc.bdr, btnC=cs.color_btn_text||sc.btnC, inp=cs.input_bg||sc.inp;
-    var mw=cs.max_width||sz.w, pd=cs.padding||sz.p, fz=cs.font_size||sz.fs, bfz=cs.btn_font_size||sz.bfs, rad=cs.border_radius||'12px';
+    var mw=cs.max_width||sz.w, pd=cs.padding||sz.p, fz=cs.font_size||sz.fs, bfz=cs.btn_font_size||sz.bfs;
+    var isClassicFlat=(d.formCfg.template==='classic_flat');
+    var rad=cs.border_radius||(isClassicFlat?'3px':'12px');
+    var cardBg=cs.card_bg||sc.card;
+    var btnRad=isClassicFlat?'3px':'8px';
+    var reqColor=isClassicFlat?'#B30000':'#ef4444';
+    var inpBorder=isClassicFlat?('1px solid '+bdr):('1.5px solid '+bdr);
+    var inpRad=isClassicFlat?'3px':'7px';
     var fields=[].concat(d.formCfg.fields||[]).concat(d.formCfg.extra_fields||[]).filter(function(f){return f.enabled;});
     var fh='';
     fields.forEach(function(f){
-      var req=f.required?'<span style="color:#ef4444;margin-left:2px">*</span>':'';
+      var req=f.required?'<span style="color:'+reqColor+';margin-left:2px">*</span>':'';
       var inp2=f.type==='textarea'
-        ?'<textarea rows="2" placeholder="'+(f.placeholder||f.label)+'" style="width:100%;padding:8px 10px;font-size:'+fz+';border:1.5px solid '+bdr+';border-radius:7px;background:'+inp+';color:'+txt+';font-family:inherit;outline:none;resize:vertical" readonly></textarea>'
+        ?'<textarea rows="2" placeholder="'+(f.placeholder||f.label)+'" style="width:100%;padding:8px 10px;font-size:'+fz+';border:'+inpBorder+';border-radius:'+inpRad+';background:'+inp+';color:'+txt+';font-family:inherit;outline:none;resize:vertical" readonly></textarea>'
         :f.type==='select'
-        ?'<select style="width:100%;padding:8px 10px;font-size:'+fz+';border:1.5px solid '+bdr+';border-radius:7px;background:'+inp+';color:'+txt+'"><option>-- Pilih --</option></select>'
-        :'<input type="'+f.type+'" placeholder="'+(f.placeholder||f.label)+'" style="width:100%;padding:8px 10px;font-size:'+fz+';border:1.5px solid '+bdr+';border-radius:7px;background:'+inp+';color:'+txt+';outline:none">';
-      fh+='<div style="margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:'+txt+'">'+f.label+req+'</label>'+inp2+'</div>';
+        ?'<select style="width:100%;padding:8px 10px;font-size:'+fz+';border:'+inpBorder+';border-radius:'+inpRad+';background:'+inp+';color:'+txt+'"><option>-- Pilih --</option></select>'
+        :'<input type="'+f.type+'" placeholder="'+(f.placeholder||f.label)+'" style="width:100%;'+(isClassicFlat?'height:36px;padding:0 8px;':'padding:8px 10px;')+'font-size:'+fz+';border:'+inpBorder+';border-radius:'+inpRad+';background:'+inp+';color:'+txt+';outline:none">';
+      fh+='<div style="margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:'+(isClassicFlat?'bold':'600')+';margin-bottom:4px;color:'+txt+'">'+f.label+req+'</label>'+inp2+'</div>';
     });
     var st=d.camp.store_name?'<div style="font-size:11px;color:'+acc+';text-align:center;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+d.camp.store_name+'</div>':'';
     var pd2=d.camp.product_name?'<div style="font-size:18px;font-weight:800;text-align:center;margin-bottom:4px;color:'+txt+'">'+d.camp.product_name+'</div>':'';
     var tl=cs.tagline?'<div style="font-size:12px;opacity:.6;text-align:center;margin-bottom:14px;color:'+txt+'">'+cs.tagline+'</div>':'';
     var dv=(st||pd2)?'<div style="height:1px;background:'+bdr+';margin:12px 0"></div>':'';
-    var cardBg=d.formCfg.template==='gradient'?'rgba(255,255,255,.08)':'#fff';
-    return '<div style="background:'+bg+';padding:16px;border-radius:8px">'+pxBar+'<div style="max-width:'+mw+';margin:0 auto;background:'+cardBg+';border-radius:'+rad+';padding:'+pd+';color:'+txt+';box-shadow:'+(d.formCfg.template==='minimal'?'none':'0 4px 24px rgba(0,0,0,.08)')+'">'+st+pd2+tl+dv+fh+'<button style="width:100%;padding:12px;font-size:'+bfz+';font-weight:700;background:'+acc+';color:'+btnC+';border:none;border-radius:8px;cursor:default;margin-top:4px">'+(d.formCfg.submit_label||'Kirim Sekarang')+'</button></div></div>';
+    return '<div style="background:'+bg+';padding:16px;border-radius:8px">'+pxBar+'<div style="max-width:'+mw+';margin:0 auto;background:'+cardBg+';border-radius:'+rad+';padding:'+pd+';color:'+txt+';box-shadow:'+(d.formCfg.template==='minimal'||isClassicFlat?'none':'0 4px 24px rgba(0,0,0,.08)')+'">'+st+pd2+tl+dv+fh+'<button style="width:100%;'+(isClassicFlat?'height:50px;padding:0 20px;':'padding:12px;')+'font-size:'+bfz+';font-weight:700;background:'+acc+';color:'+btnC+';border:none;border-radius:'+btnRad+';cursor:default;margin-top:4px">'+(d.formCfg.submit_label||'Kirim Sekarang')+'</button></div></div>';
   }
 
   // ─── Link appearance helpers ─────────────────────────────────────────────
 
   var LINK_SCHEMES = {
-    modern:   {bg:'#ffffff',                                    card:'#ffffff',              acc:'#2563eb',btn:'#ffffff',txt:'#0f172a'},
-    classic:  {bg:'#fff8f0',                                    card:'#ffffff',              acc:'#dc2626',btn:'#ffffff',txt:'#1a1a1a'},
-    minimal:  {bg:'#fafafa',                                    card:'#ffffff',              acc:'#111111',btn:'#ffffff',txt:'#111111'},
-    card:     {bg:'#eff6ff',                                    card:'#ffffff',              acc:'#2563eb',btn:'#ffffff',txt:'#0f172a'},
-    gradient: {bg:'linear-gradient(135deg,#1e3a5f,#0f2027)',   card:'rgba(255,255,255,.08)',acc:'#38bdf8',btn:'#0f172a',txt:'#e0f2fe'},
-    rose:     {bg:'#fff1f2',                                    card:'#ffffff',              acc:'#e11d48',btn:'#ffffff',txt:'#0f172a'},
-    forest:   {bg:'#f0fdf4',                                    card:'#ffffff',              acc:'#16a34a',btn:'#ffffff',txt:'#0f172a'},
-    sunset:   {bg:'linear-gradient(135deg,#ff6b6b,#feca57)',   card:'rgba(255,255,255,.95)',acc:'#ee5a24',btn:'#ffffff',txt:'#2d3436'},
-    ocean:    {bg:'linear-gradient(135deg,#0077b6,#00b4d8)',   card:'rgba(255,255,255,.12)',acc:'#48cae4',btn:'#003049',txt:'#caf0f8'},
+    modern:        {bg:'#ffffff',                                    card:'#ffffff',              acc:'#2563eb',btn:'#ffffff',txt:'#0f172a'},
+    classic:       {bg:'#fff8f0',                                    card:'#ffffff',              acc:'#dc2626',btn:'#ffffff',txt:'#1a1a1a'},
+    classic_flat:  {bg:'#b7d09a',                                    card:'#b7d09a',              acc:'#FF5000',btn:'#ffffff',txt:'#000000'},
+    minimal:       {bg:'#fafafa',                                    card:'#ffffff',              acc:'#111111',btn:'#ffffff',txt:'#111111'},
+    card:          {bg:'#eff6ff',                                    card:'#ffffff',              acc:'#2563eb',btn:'#ffffff',txt:'#0f172a'},
+    gradient:      {bg:'linear-gradient(135deg,#1e3a5f,#0f2027)',   card:'rgba(255,255,255,.08)',acc:'#38bdf8',btn:'#0f172a',txt:'#e0f2fe'},
+    rose:          {bg:'#fff1f2',                                    card:'#ffffff',              acc:'#e11d48',btn:'#ffffff',txt:'#0f172a'},
+    forest:        {bg:'#f0fdf4',                                    card:'#ffffff',              acc:'#16a34a',btn:'#ffffff',txt:'#0f172a'},
+    sunset:        {bg:'linear-gradient(135deg,#ff6b6b,#feca57)',   card:'rgba(255,255,255,.95)',acc:'#ee5a24',btn:'#ffffff',txt:'#2d3436'},
+    ocean:         {bg:'linear-gradient(135deg,#0077b6,#00b4d8)',   card:'rgba(255,255,255,.12)',acc:'#48cae4',btn:'#003049',txt:'#caf0f8'},
   };
 
   var LINK_ICONS = {

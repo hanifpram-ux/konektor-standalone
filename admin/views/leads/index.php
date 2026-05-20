@@ -119,16 +119,30 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
 
   <div class="page-header">
     <div>
+      <?php if ($fCamp): $activeCamp = null; foreach ($camps as $c) if ((int)$c->id === $fCamp) { $activeCamp = $c; break; } ?>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:hsl(var(--muted-foreground));margin-bottom:4px;">
+        <a href="../campaigns/index.php" style="color:hsl(var(--muted-foreground));text-decoration:none;display:flex;align-items:center;gap:4px;"><?= icon('megaphone','',12) ?> Kampanye</a>
+        <?= icon('chevron-right','',12) ?>
+        <span><?= $activeCamp ? ae($activeCamp->name) : 'Kampanye #'.$fCamp ?></span>
+      </div>
+      <h1 class="page-title">Leads <?= $activeCamp ? '— '.ae($activeCamp->name) : '' ?></h1>
+      <?php else: ?>
       <h1 class="page-title">Leads</h1>
+      <?php endif; ?>
       <p class="page-desc"><?= number_format($total) ?> lead<?= $fType ? ' ('.$fType.')' : '' ?></p>
     </div>
-    <form method="POST" style="display:inline;">
-      <input type="hidden" name="_export" value="1">
-      <input type="hidden" name="f_type"   value="<?= ae($fType) ?>">
-      <input type="hidden" name="f_camp"   value="<?= $fCamp ?>">
-      <input type="hidden" name="f_status" value="<?= ae($fStatus) ?>">
-      <button class="btn btn-outline btn-sm"><?= icon('download') ?> Export CSV</button>
-    </form>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <?php if ($fCamp): ?>
+      <a href="../campaigns/index.php" class="btn btn-outline btn-sm"><?= icon('arrow-left','',14) ?> Kampanye</a>
+      <?php endif; ?>
+      <form method="POST" style="display:inline;">
+        <input type="hidden" name="_export" value="1">
+        <input type="hidden" name="f_type"   value="<?= ae($fType) ?>">
+        <input type="hidden" name="f_camp"   value="<?= $fCamp ?>">
+        <input type="hidden" name="f_status" value="<?= ae($fStatus) ?>">
+        <button class="btn btn-outline btn-sm"><?= icon('download') ?> Export CSV</button>
+      </form>
+    </div>
   </div>
 
   <?php include dirname(__DIR__, 2) . '/inc/flash.php'; ?>

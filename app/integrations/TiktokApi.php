@@ -46,11 +46,11 @@ class TiktokApi
         }
 
         $event = [
-            'event'     => $eventName,
-            'event_id'  => $eventId,
-            'timestamp' => (string)time(),
-            'user_data' => $userData,
-            'page'      => [
+            'event'      => $eventName,
+            'event_id'   => $eventId,
+            'event_time' => time(),
+            'user'       => $userData,
+            'page'       => [
                 'url'      => isset($leadData['source_url']) ? $leadData['source_url'] : '',
                 'referrer' => isset($leadData['referrer'])   ? $leadData['referrer']   : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
             ],
@@ -71,8 +71,10 @@ class TiktokApi
         }
 
         $payload = [
-            'pixel_code' => $pixelId,
-            'data'       => [$event],
+            'pixel_code'      => $pixelId,
+            'event_source'    => 'web',
+            'event_source_id' => $pixelId,
+            'data'            => [$event],
         ];
 
         if (!empty($cfg['test_event_code'])) {

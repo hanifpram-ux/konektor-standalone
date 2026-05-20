@@ -11,15 +11,16 @@ $tpl = isset($cfg['template']) ? $cfg['template'] : 'modern';
 $sz  = isset($cfg['size'])     ? $cfg['size']     : 'default';
 
 $schemes = [
-    'modern'   => ['bg'=>'#ffffff',                                   'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','btnText'=>'#ffffff'],
-    'classic'  => ['bg'=>'#fff8f0',                                   'card'=>'#ffffff',              'accent'=>'#dc2626','text'=>'#1a1a1a','btnText'=>'#ffffff'],
-    'minimal'  => ['bg'=>'#fafafa',                                   'card'=>'#ffffff',              'accent'=>'#111111','text'=>'#111111','btnText'=>'#ffffff'],
-    'card'     => ['bg'=>'#eff6ff',                                   'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','btnText'=>'#ffffff'],
-    'gradient' => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)',  'card'=>'rgba(255,255,255,.08)','accent'=>'#38bdf8','text'=>'#e0f2fe','btnText'=>'#0f172a'],
-    'rose'     => ['bg'=>'#fff1f2',                                   'card'=>'#ffffff',              'accent'=>'#e11d48','text'=>'#0f172a','btnText'=>'#ffffff'],
-    'forest'   => ['bg'=>'#f0fdf4',                                   'card'=>'#ffffff',              'accent'=>'#16a34a','text'=>'#0f172a','btnText'=>'#ffffff'],
-    'sunset'   => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)',  'card'=>'rgba(255,255,255,.95)','accent'=>'#ee5a24','text'=>'#2d3436','btnText'=>'#ffffff'],
-    'ocean'    => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)',  'card'=>'rgba(255,255,255,.12)','accent'=>'#48cae4','text'=>'#caf0f8','btnText'=>'#003049'],
+    'modern'       => ['bg'=>'#ffffff',                                   'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','btnText'=>'#ffffff'],
+    'classic'      => ['bg'=>'#fff8f0',                                   'card'=>'#ffffff',              'accent'=>'#dc2626','text'=>'#1a1a1a','btnText'=>'#ffffff'],
+    'classic_flat' => ['bg'=>'#b7d09a',                                   'card'=>'#b7d09a',              'accent'=>'#FF5000','text'=>'#000000','btnText'=>'#ffffff'],
+    'minimal'      => ['bg'=>'#fafafa',                                   'card'=>'#ffffff',              'accent'=>'#111111','text'=>'#111111','btnText'=>'#ffffff'],
+    'card'         => ['bg'=>'#eff6ff',                                   'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','btnText'=>'#ffffff'],
+    'gradient'     => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)',  'card'=>'rgba(255,255,255,.08)','accent'=>'#38bdf8','text'=>'#e0f2fe','btnText'=>'#0f172a'],
+    'rose'         => ['bg'=>'#fff1f2',                                   'card'=>'#ffffff',              'accent'=>'#e11d48','text'=>'#0f172a','btnText'=>'#ffffff'],
+    'forest'       => ['bg'=>'#f0fdf4',                                   'card'=>'#ffffff',              'accent'=>'#16a34a','text'=>'#0f172a','btnText'=>'#ffffff'],
+    'sunset'       => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)',  'card'=>'rgba(255,255,255,.95)','accent'=>'#ee5a24','text'=>'#2d3436','btnText'=>'#ffffff'],
+    'ocean'        => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)',  'card'=>'rgba(255,255,255,.12)','accent'=>'#48cae4','text'=>'#caf0f8','btnText'=>'#003049'],
 ];
 $sizeMap = [
     'compact'   => ['maxW'=>'380px','pad'=>'28px 24px','bfsize'=>'15px','bpy'=>'14px'],
@@ -96,6 +97,19 @@ $title    = (isset($campaign->product_name) && $campaign->product_name
     border-radius: <?= Helper::e($radius) ?>; font-size: <?= Helper::e($bfsize) ?>; font-weight: 700;
     cursor: default; text-decoration: none; font-family: inherit;
     opacity: .85;
+  }
+  .knk-link-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: <?= Helper::e($bpy) ?> 20px;
+    background: <?= Helper::e($accent) ?>; color: <?= Helper::e($btnText) ?>!important;
+    border-radius: <?= Helper::e($radius) ?>; font-size: <?= Helper::e($bfsize) ?>; font-weight: 700;
+    text-decoration: none!important; font-family: inherit;
+    transition: background .15s;
+  }
+  .knk-link-btn:hover {
+    opacity: 1;
+    color: <?= Helper::e($btnText) ?>!important;
+    text-decoration: unset!important;
   }
   .demo-bar {
     position: fixed; top: 0; left: 0; right: 0;

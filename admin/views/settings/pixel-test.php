@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['campaign_id'])) {
                         'message'  => 'HTTP '.$code,
                         'response' => $body,
                     ];
-                    Logger::log('SnackVideo/Kwai API', $eventType, 'adstest-api.365okbj.com/api/v1/ok/event', $leadData, $resp);
+                    Logger::log('SnackVideo/Kwai API', $eventType, 'adsnebula.com/log/common/api', $leadData, $resp);
                     break;
 
                 case 'google':
