@@ -49,13 +49,9 @@ class PublicController
             http_response_code(403); echo 'Access denied.'; return;
         }
 
-        // Block check — global block always enforced; campaign-specific only if enabled
         $ip  = Helper::getClientIp();
         $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
-        if (Blocker::isBlocked(0, $ip, '', $vid)) {
-            include KONEKTOR_ROOT . '/public/blocked.php'; return;
-        }
-        if ($campaign->block_enabled && Blocker::isBlocked($campaign->id, $ip, '', $vid)) {
+        if (Blocker::isBlocked(null, $ip, '', $vid)) {
             include KONEKTOR_ROOT . '/public/blocked.php'; return;
         }
 
@@ -69,10 +65,15 @@ class PublicController
             $src = isset($_GET['_src']) && $_GET['_src'] !== ''
                 ? $_GET['_src']
                 : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
+            // _ref: prefer explicit param from embed JS (carries real traffic source like facebook.com)
+            // over HTTP_REFERER which would just be the landing page domain
+            $ref = isset($_GET['_ref']) && $_GET['_ref'] !== ''
+                ? $_GET['_ref']
+                : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
             $qs  = http_build_query(array_filter([
                 '_vid'     => $vid,
                 '_src'     => $src,
-                '_ref'     => isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
+                '_ref'     => $ref,
                 'click_id' => isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : ''),
             ]));
             header('Location: ' . Helper::campaignUrl($campaign) . '/thanks' . ($qs ? '?' . $qs : ''), true, 302);
@@ -151,23 +152,9 @@ class PublicController
             return;
         }
 
-        // Block check — global block always enforced; campaign-specific only if enabled
         $ip = Helper::getClientIp();
         $fp = Crypto::fingerprint($phone, $email);
-        if (Blocker::isBlocked(0, $ip, $fp, $vid)) {
-            if ($isJson) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode([
-                    'success' => false,
-                    'blocked' => true,
-                    'message' => $campaign->block_message ?: 'Akses Anda telah diblokir.',
-                ]);
-            } else {
-                include KONEKTOR_ROOT . '/public/blocked.php';
-            }
-            return;
-        }
-        if ($campaign->block_enabled && Blocker::isBlocked($campaign->id, $ip, $fp, $vid)) {
+        if (Blocker::isBlocked(null, $ip, $fp, $vid)) {
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode([
@@ -197,6 +184,17 @@ class PublicController
             if (!in_array($k, $stdKeys)) $extraData[$k] = strip_tags((string)$v);
         }
 
+        // Referrer: the real traffic source (e.g. facebook.com, tiktok.com).
+        // For embedded forms, JS sends document.referrer of the landing page as 'referrer'.
+        // HTTP_REFERER at submit time is the landing page URL itself (not the ad platform),
+        // so we only fall back to it when the JS did not supply a referrer value.
+        $referrer = substr(strip_tags(isset($data['referrer']) ? $data['referrer'] : ''), 0, 2000);
+        if ($referrer === '') {
+            // Last resort: HTTP_REFERER — will be the landing page URL when form is embedded,
+            // or the actual ad platform URL when form is loaded directly.
+            $referrer = substr(isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '', 0, 2000);
+        }
+
         $leadData = [
             'campaign_id'    => $campaign->id,
             'operator_id'    => $operator ? $operator->id : null,
@@ -209,7 +207,7 @@ class PublicController
             'extra_data'     => $extraData,
             '_vid'           => $vid,
             'source_url'     => substr(strip_tags(isset($data['source_url']) ? $data['source_url'] : ''), 0, 2000),
-            'referrer'       => substr(strip_tags(isset($data['referrer'])   ? $data['referrer']   : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '')), 0, 2000),
+            'referrer'       => $referrer,
             'click_id'       => strip_tags(isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : (isset($data['click_id']) ? $data['click_id'] : ''))),
             'product_name'   => isset($campaign->product_name) ? $campaign->product_name : '',
         ];
@@ -287,6 +285,12 @@ class PublicController
         $leadId    = (int)(isset($_GET['lid'])     ? $_GET['lid']     : 0);
         $isDouble  = !empty($_GET['double']);
         $isBlocked = !empty($_GET['blocked']);
+
+        // Prevent pixel re-fire when visitor navigates back to the thanks page URL
+        if (!$isDouble && $leadId && isset($_SESSION['knk_tf_' . $leadId])) {
+            $isDouble = true;
+        }
+
         // For wa_link: ignore any stale lid — always create fresh record below
         $lead      = ($leadId && $campaign->type !== 'wa_link') ? Lead::find($leadId) : null;
         $operator  = ($lead && $lead->operator_id) ? Operator::find($lead->operator_id) : null;
@@ -306,7 +310,11 @@ class PublicController
             // Always create a click record for wa_link thanks visits
             $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : (isset($_GET['_vid']) ? $_GET['_vid'] : '');
             $srcUrl = isset($_GET['_src']) ? substr($_GET['_src'], 0, 2000) : '';
-            $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '');
+            // _ref is passed from form() — it holds HTTP_REFERER captured at the moment the visitor
+            // first landed (real ad platform source like facebook.com/tiktok.com).
+            // Do NOT fall back to HTTP_REFERER here: at this point it would be the konektor
+            // redirect URL (/k/{slug}), not the actual traffic source.
+            $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : '';
             // Detect repeat click via cookie + IP (pass srcUrl for domain/page scope)
             $isRepeat = $campaign->double_lead_enabled
                 ? Lead::checkDouble($campaign->id, '', '', $vid, '', $srcUrl)
@@ -385,6 +393,9 @@ class PublicController
                     TiktokApi::sendEvent('form_submit', $eventData, $tiktokCfg);
                 }
             }
+
+            // Mark in session so back-button revisit to the same thanks URL won't re-fire pixels
+            if ($leadId) $_SESSION['knk_tf_' . $leadId] = 1;
         }
 
         // ── Telegram notification — only for form campaigns ───────────────
@@ -400,13 +411,20 @@ class PublicController
             $redirectUrl = $cfg['redirect_url'];
         }
 
-        // Browser-side scripts: Google always; Meta/TikTok skipped if CAPI token configured
+        // Browser-side scripts: skip entirely for double/blocked leads
         $metaCfg  = MetaApi::getConfig($campaign);
         $tiktokCfg= TiktokApi::getConfig($campaign);
-        $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'thanks_page') : '';
-        $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'thanks_page') : '';
-        $googleSc = GoogleApi::getScript($campaign, 'thanks_page');
-        $snackSc  = SnackApi::getScript($campaign);
+        if ($isDouble || $isBlocked) {
+            $metaSc   = '';
+            $tiktokSc = '';
+            $googleSc = '';
+            $snackSc  = '';
+        } else {
+            $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'thanks_page') : '';
+            $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'thanks_page') : '';
+            $googleSc = GoogleApi::getScript($campaign, 'thanks_page');
+            $snackSc  = SnackApi::getScript($campaign);
+        }
 
         // Pass form config so thanks.php can derive colors from the same scheme
         $formCfg = Campaign::getFormConfig($campaign);
