@@ -57,10 +57,10 @@ class CsController
         }
         $decr = Lead::decrypt(clone $lead);
         Blocker::block([
-            'campaign_id'   => $lead->campaign_id,
-            'ip_address'    => $blockBy !== 'cookie' ? $lead->ip_address : null,
-            'fingerprint'   => $blockBy !== 'cookie' ? $lead->fingerprint : null,
-            'cookie_id'     => $blockBy !== 'ip'     ? $lead->cookie_id   : null,
+            'campaign_id'   => null,
+            'ip_address'    => $lead->ip_address,
+            'fingerprint'   => $lead->fingerprint,
+            'cookie_id'     => $lead->cookie_id,
             'phone'         => $decr->phone ?? '',
             'email'         => $decr->email ?? '',
             'reason'        => $reason,
@@ -88,10 +88,10 @@ class CsController
             echo json_encode(['success'=>false, 'message'=>'Lead tidak ditemukan.']); return;
         }
         if ($lead->ip_address) {
-            DB::query("DELETE FROM " . DB::t('blocked') . " WHERE ip_address = ? AND (campaign_id = ? OR campaign_id IS NULL)", [$lead->ip_address, $lead->campaign_id]);
+            DB::query("DELETE FROM " . DB::t('blocked') . " WHERE ip_address = ?", [$lead->ip_address]);
         }
         if ($lead->cookie_id) {
-            DB::query("DELETE FROM " . DB::t('blocked') . " WHERE cookie_id = ? AND (campaign_id = ? OR campaign_id IS NULL)", [$lead->cookie_id, $lead->campaign_id]);
+            DB::query("DELETE FROM " . DB::t('blocked') . " WHERE cookie_id = ?", [$lead->cookie_id]);
         }
         Lead::updateStatus($leadId, 'new');
         echo json_encode(['success' => true]);
@@ -143,6 +143,13 @@ class CsController
         }
 
         Lead::markFollowedUp($leadId);
+
+        // Auto-update status to 'contacted' when CS clicks follow-up (mirrors Telegram behaviour)
+        if ($lead->status === 'new') {
+            Lead::updateStatus($leadId, 'contacted', 'Follow-up via CS Panel', $operator->operator_id);
+            Helper::fireStatusEvent($leadId, 'contacted');
+        }
+
         echo json_encode(['success' => true, 'url' => $followUrl, 'type' => $followType]);
     }
 }
