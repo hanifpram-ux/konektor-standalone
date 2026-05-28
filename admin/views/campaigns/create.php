@@ -53,7 +53,7 @@ $alpineInit = [
     'thanksCfg'   => $thanksCfg,
     'pixelCfg'    => $pixelCfg,
     'operators'   => $initOps,
-    'distMode'    => 'proportional',
+    'distMode'    => isset($formCfg['_dist_mode']) ? $formCfg['_dist_mode'] : 'proportional',
     'camp' => [
         'name'                => isset($campaign->name)                ? $campaign->name                : '',
         'slug'                => isset($campaign->slug)                ? $campaign->slug                : '',
@@ -1729,7 +1729,9 @@ const KNK = (() => {
     sv('f_double_lead_enabled', d.camp.double_lead_enabled ? '1' : '0');
     sv('f_double_lead_message', d.camp.double_lead_message);
     sv('f_followup_message',    d.camp.followup_message);
-    sv('f_form_config_json',        JSON.stringify(d.formCfg));
+    var formToSave = JSON.parse(JSON.stringify(d.formCfg));
+    formToSave._dist_mode = d.distMode;
+    sv('f_form_config_json',        JSON.stringify(formToSave));
     // Strip internal _custom_* flags before saving
     var thanksToSave = JSON.parse(JSON.stringify(d.thanksCfg));
     if (thanksToSave.theme) {
