@@ -81,19 +81,23 @@ class MetaApi
         $initOpts = ($eventType !== 'page_load') ? ", { autoConfig: false }" : '';
         $inits = "  fbq('init', '{$pixelId}'{$initOpts});\n";
 
+        // sessionStorage key prevents the track call from re-firing when the visitor
+        // navigates back in the same browser tab (bfcache miss or page refresh).
+        $sessKey = 'knk_m_' . (int)$campaign->id . '_' . $eventType;
+
         if ($eventType === 'thanks_page' && !empty($cfg['value'])) {
             $value    = (float)$cfg['value'];
             $currency = isset($cfg['currency']) ? $cfg['currency'] : 'IDR';
-            $track    = "  fbq('track', '{$event}', { value: {$value}, currency: '{$currency}' }, { eventID: '{$eventId}' });";
+            $track    = "fbq('track','{$event}',{value:{$value},currency:'{$currency}'},{eventID:'{$eventId}'});";
         } else {
-            $track = "  fbq('track', '{$event}', {}, { eventID: '{$eventId}' });";
+            $track = "fbq('track','{$event}',{},{eventID:'{$eventId}'});";
         }
 
         return <<<HTML
 <!-- Meta Pixel -->
 <script>
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-{$inits}{$track}
+{$inits}(function(){var _k='{$sessKey}';if(sessionStorage.getItem(_k))return;sessionStorage.setItem(_k,'1');{$track}})();
 </script>
 <!-- End Meta Pixel -->
 
