@@ -296,8 +296,8 @@ class PublicController
         $operator  = ($lead && $lead->operator_id) ? Operator::find($lead->operator_id) : null;
         $cfg       = Campaign::getThanksConfig($campaign);
 
-        // For wa_link: always create a click record on thanks page visit
-        // (no form submit — every visit to thanks IS the click event)
+        // For wa_link: create a click record on first thanks page visit only.
+        // Session guard prevents duplicate leads + events on browser back-navigation.
         if ($campaign->type === 'wa_link') {
             // Reject bot/crawler requests — they must not create leads
             if (Helper::isBotRequest()) {
@@ -307,39 +307,56 @@ class PublicController
 
             $operator = Rotator::pick($campaign->id);
 
-            // Always create a click record for wa_link thanks visits
             $vid    = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : (isset($_GET['_vid']) ? $_GET['_vid'] : '');
             $srcUrl = isset($_GET['_src']) ? substr($_GET['_src'], 0, 2000) : '';
-            // _ref is passed from form() — it holds HTTP_REFERER captured at the moment the visitor
-            // first landed (real ad platform source like facebook.com/tiktok.com).
-            // Do NOT fall back to HTTP_REFERER here: at this point it would be the konektor
-            // redirect URL (/k/{slug}), not the actual traffic source.
+            // _ref holds HTTP_REFERER captured at landing (real ad source, e.g. facebook.com).
+            // Do NOT fall back to HTTP_REFERER here — it would be the konektor redirect URL.
             $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : '';
-            // Detect repeat click via cookie + IP (pass srcUrl for domain/page scope)
-            $isRepeat = $campaign->double_lead_enabled
-                ? Lead::checkDouble($campaign->id, '', '', $vid, '', $srcUrl)
-                : false;
-            try {
-                $leadId = Lead::create([
-                    'campaign_id' => $campaign->id,
-                    'operator_id' => $operator ? $operator->id : null,
-                    'name'        => '',
-                    'phone'       => '',
-                    'email'       => '',
-                    '_vid'        => $vid,
-                    'source_url'  => $srcUrl,
-                    'referrer'    => $refUrl,
-                    'click_id'    => isset($_GET['click_id']) ? $_GET['click_id'] : '',
-                ]);
-                if ($isRepeat) Lead::markDouble($leadId);
-                $lead = Lead::find($leadId);
-            } catch (Exception $e) {
-                // Silently ignore lead creation errors in wa_link flow
+
+            // Session guard: prevent duplicate lead + events on browser back-navigation.
+            // Key is per-campaign + per-visitor so each unique visitor gets their own slot.
+            $waSessKey = 'knk_wa_' . $campaign->id . '_' . md5($vid ?: session_id());
+            if (isset($_SESSION[$waSessKey])) {
+                // Visitor already passed through this thanks page in the current session
+                // (back-navigation detected) — mark as double so pixels are skipped.
+                $isDouble = true;
+                $storedId = $_SESSION[$waSessKey];
+                if ($storedId && !$lead) {
+                    $leadId = $storedId;
+                    $lead   = Lead::find($leadId);
+                }
+            } else {
+                // First visit: detect cross-session repeat via double-lead check
+                $isRepeat = $campaign->double_lead_enabled
+                    ? Lead::checkDouble($campaign->id, '', '', $vid, '', $srcUrl)
+                    : false;
+                try {
+                    $leadId = Lead::create([
+                        'campaign_id' => $campaign->id,
+                        'operator_id' => $operator ? $operator->id : null,
+                        'name'        => '',
+                        'phone'       => '',
+                        'email'       => '',
+                        '_vid'        => $vid,
+                        'source_url'  => $srcUrl,
+                        'referrer'    => $refUrl,
+                        'click_id'    => isset($_GET['click_id']) ? $_GET['click_id'] : '',
+                    ]);
+                    if ($isRepeat) {
+                        Lead::markDouble($leadId);
+                        $isDouble = true;
+                    }
+                    $lead = Lead::find($leadId);
+                } catch (Exception $e) {
+                    // Silently ignore lead creation errors in wa_link flow
+                }
+                // Store in session so back-navigation reuses this lead without re-firing events
+                if (isset($leadId) && $leadId) $_SESSION[$waSessKey] = $leadId;
             }
         }
 
-        // For wa_link: also log as form_submit (= link clicked event)
-        if ($campaign->type === 'wa_link' && $lead) {
+        // For wa_link: log as form_submit (= link clicked event) — skip on back-navigation
+        if ($campaign->type === 'wa_link' && $lead && !$isDouble) {
             Analytics::logEvent($campaign->id, 'form_submit', $lead->id);
         }
 
