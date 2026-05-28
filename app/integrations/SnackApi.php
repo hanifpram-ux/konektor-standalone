@@ -96,3 +96,4 @@ class SnackApi
         return trim(!empty($cfg[$k]) ? $cfg[$k] : '');
     }
 }
+ 
