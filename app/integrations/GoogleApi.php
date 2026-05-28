@@ -49,10 +49,13 @@ HTML;
                 $value    = !empty($cfg['value']) ? (float)$cfg['value'] : null;
                 $currency = htmlspecialchars(isset($cfg['currency']) ? $cfg['currency'] : 'IDR', ENT_QUOTES);
 
-                $convParams = "'send_to': '{$sendTo}'";
+                $convParams = "'send_to':'{$sendTo}'";
                 if ($value !== null) {
-                    $convParams .= ", 'value': {$value}, 'currency': '{$currency}'";
+                    $convParams .= ",'value':{$value},'currency':'{$currency}'";
                 }
+
+                // sessionStorage key prevents conversion from re-firing on back-navigation
+                $gSessKey = 'knk_g_' . (int)$campaign->id . '_' . $eventType;
 
                 $output .= <<<HTML
 <!-- Google Ads Conversion -->
@@ -60,7 +63,7 @@ HTML;
 <script>
   window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
   gtag('js',new Date());gtag('config','AW-{$convId}');
-  gtag('event','conversion',{{$convParams}});
+  (function(){var _k='{$gSessKey}';if(sessionStorage.getItem(_k))return;sessionStorage.setItem(_k,'1');gtag('event','conversion',{{$convParams}});})();
 </script>
 <!-- End Google Ads Conversion -->
 
@@ -83,9 +86,13 @@ HTML;
                 'thanks_page' => 'purchase',
             ];
             $gaEvent = isset($eMap[$eventType]) ? $eMap[$eventType] : '';
-            $evLine  = ($gaEvent && $gaEvent !== 'page_view')
-                ? "gtag('event','{$gaEvent}');"
-                : '';
+
+            // sessionStorage guard for GA4 conversion events (not page_view)
+            $ga4SessKey = 'knk_g4_' . (int)$campaign->id . '_' . $eventType;
+            $evLine = '';
+            if ($gaEvent && $gaEvent !== 'page_view') {
+                $evLine = "(function(){var _k='{$ga4SessKey}';if(sessionStorage.getItem(_k))return;sessionStorage.setItem(_k,'1');gtag('event','{$gaEvent}');})();";
+            }
 
             $output .= <<<HTML
 <!-- Google Analytics 4 -->
