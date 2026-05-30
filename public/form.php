@@ -163,6 +163,16 @@ $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
       <input type="hidden" name="click_id" value="<?= Helper::e($clickId) ?>">
       <?php endif; ?>
 
+      <?php
+      // Pass fbclid + UTM params so embed forms forward them to submit even without URL access
+      $trackingFields = ['fbclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id'];
+      foreach ($trackingFields as $tf):
+          $tv = isset($_GET[$tf]) ? substr(strip_tags(trim($_GET[$tf])), 0, 500) : '';
+          if ($tv !== ''):
+      ?>
+      <input type="hidden" name="<?= $tf ?>" value="<?= Helper::e($tv) ?>">
+      <?php endif; endforeach; ?>
+
       <?php foreach ($fields as $f):
         if (empty($f['enabled'])) continue;
         $fname  = htmlspecialchars($f['name'] ?? '');

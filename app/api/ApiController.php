@@ -287,7 +287,7 @@ class ApiController
         if (!$lead) { self::notFound(); return; }
         $decr = Lead::decrypt(clone $lead);
         Blocker::block([
-            'campaign_id' => $lead->campaign_id,
+            'campaign_id' => null,
             'ip_address'  => $lead->ip_address,
             'fingerprint' => $lead->fingerprint,
             'cookie_id'   => $lead->cookie_id,

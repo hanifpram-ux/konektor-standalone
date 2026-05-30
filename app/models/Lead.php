@@ -121,6 +121,8 @@ class Lead
         if (!empty($args['status']))      { $where .= ' AND l.status = ?';       $params[] = $args['status']; }
         if (isset($args['is_double']))    { $where .= ' AND l.is_double = ?';    $params[] = (int)$args['is_double']; }
         if (!empty($args['camp_type']))   { $where .= ' AND c.type = ?';         $params[] = $args['camp_type']; }
+        if (!empty($args['date_from']))   { $where .= ' AND l.created_at >= ?';  $params[] = $args['date_from']; }
+        if (!empty($args['date_to']))     { $where .= ' AND l.created_at <= ?';  $params[] = $args['date_to']; }
         if (!empty($args['search'])) {
             $q = '%' . $args['search'] . '%';
             $where  .= ' AND (l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)';
@@ -151,6 +153,8 @@ class Lead
         if (!empty($args['operator_id'])) { $where .= ' AND l.operator_id = ?'; $params[] = $args['operator_id']; }
         if (!empty($args['status']))      { $where .= ' AND l.status = ?';       $params[] = $args['status']; }
         if (isset($args['is_double']))    { $where .= ' AND l.is_double = ?';    $params[] = (int)$args['is_double']; }
+        if (!empty($args['date_from']))   { $where .= ' AND l.created_at >= ?';  $params[] = $args['date_from']; }
+        if (!empty($args['date_to']))     { $where .= ' AND l.created_at <= ?';  $params[] = $args['date_to']; }
 
         if (!empty($args['camp_type'])) {
             // Need join for camp_type filter

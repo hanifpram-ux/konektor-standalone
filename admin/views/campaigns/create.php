@@ -1460,10 +1460,19 @@ const KNK = (() => {
   }
 
   // ── Operators ──────────────────────────────────────────────────────────
+  // Preserve weights when operator is unchecked then re-checked in the same session
+  var _savedWeights = {};
+
   function toggleOp(id, checked) {
     var idx = d.operators.findIndex(function(o){return o.id===id;});
-    if (checked && idx<0) d.operators.push({id:id,weight:1});
-    if (!checked && idx>=0) d.operators.splice(idx,1);
+    if (checked && idx<0) {
+      var w = (_savedWeights[id] !== undefined) ? _savedWeights[id] : 1;
+      d.operators.push({id:id, weight:w});
+    }
+    if (!checked && idx>=0) {
+      _savedWeights[id] = d.operators[idx].weight; // preserve before removing
+      d.operators.splice(idx,1);
+    }
     var isProp = (d.distMode !== 'roundrobin');
     var wr  = $('op_weight_row_'+id);
     var or_ = $('op_order_row_'+id);

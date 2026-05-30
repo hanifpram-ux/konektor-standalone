@@ -26,15 +26,16 @@ function buildSnippetData($c)
 
     // ── Scheme — identical to standalone/public/form.php ────────────────
     $schemes = [
-        'modern'   => ['bg'=>'#ffffff',                                    'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','border'=>'#e2e8f0',             'btnText'=>'#ffffff','inputBg'=>'#f8fafc','shadow'=>'0 4px 24px rgba(0,0,0,.08)'],
-        'classic'  => ['bg'=>'#fff8f0',                                    'card'=>'#ffffff',              'accent'=>'#dc2626','text'=>'#1a1a1a','border'=>'#d4a27a',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 2px 16px rgba(220,38,38,.10)'],
-        'minimal'  => ['bg'=>'#fafafa',                                    'card'=>'#ffffff',              'accent'=>'#111111','text'=>'#111111','border'=>'#e2e8f0',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'none'],
-        'card'     => ['bg'=>'#eff6ff',                                    'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','border'=>'#bfdbfe',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 8px 32px rgba(37,99,235,.12)'],
-        'gradient' => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)',   'card'=>'rgba(255,255,255,.08)','accent'=>'#38bdf8','text'=>'#e0f2fe','border'=>'rgba(255,255,255,.20)','btnText'=>'#0f172a','inputBg'=>'rgba(255,255,255,.10)','shadow'=>'0 8px 40px rgba(0,0,0,.3)'],
-        'rose'     => ['bg'=>'#fff1f2',                                    'card'=>'#ffffff',              'accent'=>'#e11d48','text'=>'#0f172a','border'=>'#fecdd3',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 4px 20px rgba(225,29,72,.10)'],
-        'forest'   => ['bg'=>'#f0fdf4',                                    'card'=>'#ffffff',              'accent'=>'#16a34a','text'=>'#0f172a','border'=>'#bbf7d0',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 4px 20px rgba(22,163,74,.10)'],
-        'sunset'   => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)',   'card'=>'rgba(255,255,255,.95)','accent'=>'#ee5a24','text'=>'#2d3436','border'=>'rgba(238,90,36,.3)',  'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 8px 32px rgba(238,90,36,.15)'],
-        'ocean'    => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)',   'card'=>'rgba(255,255,255,.12)','accent'=>'#48cae4','text'=>'#caf0f8','border'=>'rgba(255,255,255,.25)','btnText'=>'#003049','inputBg'=>'rgba(255,255,255,.12)','shadow'=>'0 8px 40px rgba(0,119,182,.3)'],
+        'modern'       => ['bg'=>'#ffffff',                                    'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','border'=>'#e2e8f0',             'btnText'=>'#ffffff','inputBg'=>'#f8fafc','shadow'=>'0 4px 24px rgba(0,0,0,.08)'],
+        'classic'      => ['bg'=>'#fff8f0',                                    'card'=>'#ffffff',              'accent'=>'#dc2626','text'=>'#1a1a1a','border'=>'#d4a27a',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 2px 16px rgba(220,38,38,.10)'],
+        'classic_flat' => ['bg'=>'#b7d09a',                                    'card'=>'#b7d09a',              'accent'=>'#FF5000','text'=>'#000000','border'=>'#ccc',                'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'none'],
+        'minimal'      => ['bg'=>'#fafafa',                                    'card'=>'#ffffff',              'accent'=>'#111111','text'=>'#111111','border'=>'#e2e8f0',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'none'],
+        'card'         => ['bg'=>'#eff6ff',                                    'card'=>'#ffffff',              'accent'=>'#2563eb','text'=>'#0f172a','border'=>'#bfdbfe',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 8px 32px rgba(37,99,235,.12)'],
+        'gradient'     => ['bg'=>'linear-gradient(135deg,#1e3a5f,#0f2027)',   'card'=>'rgba(255,255,255,.08)','accent'=>'#38bdf8','text'=>'#e0f2fe','border'=>'rgba(255,255,255,.20)','btnText'=>'#0f172a','inputBg'=>'rgba(255,255,255,.10)','shadow'=>'0 8px 40px rgba(0,0,0,.3)'],
+        'rose'         => ['bg'=>'#fff1f2',                                    'card'=>'#ffffff',              'accent'=>'#e11d48','text'=>'#0f172a','border'=>'#fecdd3',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 4px 20px rgba(225,29,72,.10)'],
+        'forest'       => ['bg'=>'#f0fdf4',                                    'card'=>'#ffffff',              'accent'=>'#16a34a','text'=>'#0f172a','border'=>'#bbf7d0',             'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 4px 20px rgba(22,163,74,.10)'],
+        'sunset'       => ['bg'=>'linear-gradient(135deg,#ff6b6b,#feca57)',   'card'=>'rgba(255,255,255,.95)','accent'=>'#ee5a24','text'=>'#2d3436','border'=>'rgba(238,90,36,.3)',  'btnText'=>'#ffffff','inputBg'=>'#fff',   'shadow'=>'0 8px 32px rgba(238,90,36,.15)'],
+        'ocean'        => ['bg'=>'linear-gradient(135deg,#0077b6,#00b4d8)',   'card'=>'rgba(255,255,255,.12)','accent'=>'#48cae4','text'=>'#caf0f8','border'=>'rgba(255,255,255,.25)','btnText'=>'#003049','inputBg'=>'rgba(255,255,255,.12)','shadow'=>'0 8px 40px rgba(0,119,182,.3)'],
     ];
     $sizes = [
         'compact'  => ['maxW'=>'380px','pad'=>'20px 18px','fsize'=>'13px','bfsize'=>'14px','bpy'=>'11px'],
@@ -60,7 +61,8 @@ function buildSnippetData($c)
     $fsize  = !empty($cs['font_size'])      ? $cs['font_size']      : $szv['fsize'];
     $bfsize = !empty($cs['btn_font_size'])  ? $cs['btn_font_size']  : $szv['bfsize'];
     $bpy    = !empty($cs['btn_py'])         ? $cs['btn_py']         : $szv['bpy'];
-    $radius = !empty($cs['border_radius'])  ? $cs['border_radius']  : '12px';
+    $isCF   = ($tpl === 'classic_flat');
+    $radius = !empty($cs['border_radius'])  ? $cs['border_radius']  : ($isCF ? '3px' : '12px');
     $btnLbl = htmlspecialchars(isset($formCfg['submit_label']) ? $formCfg['submit_label'] : 'Kirim Sekarang', ENT_QUOTES);
 
     // Sanitize all CSS values — strip anything that could break out of a <style> block
@@ -97,11 +99,19 @@ function buildSnippetData($c)
         $req   = !empty($f['required']);
         $ra    = $req ? ' required' : '';
         $rl    = $req ? '<span style="color:#ef4444;margin-left:2px">*</span>' : '';
-        $fieldStyle = "width:100%;padding:10px 12px;font-size:{$fsize};border:1.5px solid {$bdr};border-radius:8px;background:{$inpBg};color:{$txt};outline:none;font-family:inherit;";
+        $reqColor   = $isCF ? '#B30000' : '#ef4444';
+        $lblWeight  = $isCF ? 'bold' : '600';
+        $rl         = $req ? '<span style="color:' . $reqColor . ';margin-left:2px">*</span>' : '';
+        if ($isCF) {
+            $fieldStyle = "width:100%;height:36px;padding:0 8px;font-size:{$fsize};border:1px solid {$bdr};border-radius:3px;background:{$inpBg};color:{$txt};outline:none;font-family:inherit;";
+        } else {
+            $fieldStyle = "width:100%;padding:10px 12px;font-size:{$fsize};border:1.5px solid {$bdr};border-radius:8px;background:{$inpBg};color:{$txt};outline:none;font-family:inherit;";
+        }
 
-        $fh .= "<div style=\"margin-bottom:14px;\"><label style=\"display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:{$txt}\">{$label}{$rl}</label>";
+        $fh .= "<div style=\"margin-bottom:14px;\"><label style=\"display:block;font-size:13px;font-weight:{$lblWeight};margin-bottom:5px;color:{$txt}\">{$label}{$rl}</label>";
         if ($ftype === 'textarea') {
-            $fh .= "<textarea name=\"{$fname}\" rows=\"3\" placeholder=\"{$ph}\" style=\"{$fieldStyle}resize:vertical;\"{$ra}></textarea>";
+            $taStyle = $isCF ? "width:100%;padding:8px;font-size:{$fsize};border:1px solid {$bdr};border-radius:3px;background:{$inpBg};color:{$txt};outline:none;font-family:inherit;resize:vertical;" : "{$fieldStyle}resize:vertical;";
+            $fh .= "<textarea name=\"{$fname}\" rows=\"3\" placeholder=\"{$ph}\" style=\"{$taStyle}\"{$ra}></textarea>";
         } elseif ($ftype === 'select' && !empty($f['options'])) {
             $fh .= "<select name=\"{$fname}\" style=\"{$fieldStyle}\"{$ra}><option value=\"\">-- Pilih --</option>";
             foreach ((array)$f['options'] as $opt) {
@@ -128,6 +138,17 @@ function buildSnippetData($c)
     $campNameSafe = htmlspecialchars(preg_replace('/[<>"\']/', '', $c->name), ENT_QUOTES);
 
     // ── Form embed code ───────────────────────────────────────────────────
+    // classic_flat overrides for embed
+    if ($isCF) {
+        $errCss  = ".knk-err{display:none;padding:10px;border-radius:4px;margin:10px 0;font-size:13px;font-weight:bold;text-align:center;background:#ffebee;color:#c62828;border:1px solid #ef5350;} .knk-err.show{display:block;}";
+        $btnStyle = "width:100%;height:50px;padding:0 20px;font-size:{$bfsize};font-weight:700;background:{$acc};color:{$btnTxt};border:none;border-radius:3px;cursor:pointer;font-family:inherit;margin-top:6px;transition:background .15s;";
+        $btnHoverCss = "#knkBtn:not(:disabled):hover{background:#e04800;}";
+    } else {
+        $errCss  = ".knk-err{display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;font-weight:600;background:#fee2e2;color:#b91c1c;} .knk-err.show{display:block;}";
+        $btnStyle = "width:100%;padding:{$bpy} 20px;font-size:{$bfsize};font-weight:700;background:{$acc};color:{$btnTxt};border:none;border-radius:8px;cursor:pointer;font-family:inherit;margin-top:6px;transition:opacity .15s;";
+        $btnHoverCss = "#knkBtn:not(:disabled):hover{opacity:.88;}";
+    }
+
     // .knk-wrap: NO flex/min-height — responsive mengikuti container host
     $formCode = <<<HTML
 <!-- Konektor Form: {$campNameSafe} -->
@@ -135,8 +156,9 @@ function buildSnippetData($c)
 <style>
 .knk-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
 .knk-card{background:{$card};border-radius:{$radius};box-shadow:{$shadow};padding:{$pad};color:{$txt};max-width:{$maxW};margin:0 auto;}
-.knk-err{display:none;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;font-weight:600;background:#fee2e2;color:#b91c1c;}
-.knk-err.show{display:block;}
+{$errCss}
+{$btnHoverCss}
+#knkBtn:disabled{opacity:.5;cursor:not-allowed;}
 </style>
 <div class="knk-wrap">
   <div class="knk-card">
@@ -144,7 +166,7 @@ function buildSnippetData($c)
     <div class="knk-err" id="knkErr"></div>
     <form id="knkForm" novalidate>
       {$fh}
-      <button type="submit" id="knkBtn" disabled style="width:100%;padding:{$bpy} 20px;font-size:{$bfsize};font-weight:700;background:{$acc};color:{$btnTxt};border:none;border-radius:8px;cursor:pointer;font-family:inherit;margin-top:6px;transition:opacity .15s;">{$btnLbl}</button>
+      <button type="submit" id="knkBtn" disabled style="{$btnStyle}">{$btnLbl}</button>
     </form>
   </div>
 </div>
@@ -190,14 +212,17 @@ HTML;
     ];
     $waIcon = isset($iconSvgs[$iconKey]) ? $iconSvgs[$iconKey] : $iconSvgs['wa'];
 
+    $linkBtnTransition = $isCF ? 'background .15s' : 'opacity .2s';
+    $linkBtnHover      = $isCF ? '.knk-link-btn:hover{opacity:1;background:#e04800;color:' . $btnTxt . '!important;text-decoration:unset!important;}' : '.knk-link-btn:hover{opacity:.88;}';
+
     if ($c->type === 'wa_link') {
         // Link: anchor langsung ke URL kampanye + pass _vid untuk tracking
         $btnCode = <<<HTML
 <!-- Konektor Link Button: {$campNameSafe} -->
 <style>
 .knk-btn-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
-.knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt};border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit;transition:opacity .2s;margin:0 auto;}
-.knk-link-btn:hover{opacity:.88;}
+.knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt}!important;border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none!important;font-family:inherit;transition:{$linkBtnTransition};margin:0 auto;}
+{$linkBtnHover}
 </style>
 <div class="knk-btn-wrap">
   <a href="{$url}" class="knk-link-btn" id="knkLinkBtn">
@@ -226,8 +251,8 @@ HTML;
 {$metaSc}{$tiktokSc}{$googleSc}
 <style>
 .knk-btn-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
-.knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt};border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit;transition:opacity .2s;margin:0 auto;}
-.knk-link-btn:hover{opacity:.88;}
+.knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt}!important;border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none!important;font-family:inherit;transition:{$linkBtnTransition};margin:0 auto;}
+{$linkBtnHover}
 </style>
 <div class="knk-btn-wrap">
   <a href="{$url}" class="knk-link-btn" id="knkLinkBtn">

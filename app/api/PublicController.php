@@ -184,6 +184,14 @@ class PublicController
             if (!in_array($k, $stdKeys)) $extraData[$k] = strip_tags((string)$v);
         }
 
+        // Parse fbclid + UTM params from source_url (embed JS sends landing page URL)
+        // Falls back to current $_GET if source_url not available
+        $sourceUrlForTracking = isset($data['source_url']) ? $data['source_url'] : '';
+        $trackingParams = Helper::parseTrackingParams($sourceUrlForTracking ?: null);
+        if (!empty($trackingParams)) {
+            $extraData = array_merge($trackingParams, $extraData); // tracking first, form data wins on conflict
+        }
+
         // Referrer: the real traffic source (e.g. facebook.com, tiktok.com).
         // For embedded forms, JS sends document.referrer of the landing page as 'referrer'.
         // HTTP_REFERER at submit time is the landing page URL itself (not the ad platform),
@@ -208,7 +216,7 @@ class PublicController
             '_vid'           => $vid,
             'source_url'     => substr(strip_tags(isset($data['source_url']) ? $data['source_url'] : ''), 0, 2000),
             'referrer'       => $referrer,
-            'click_id'       => strip_tags(isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : (isset($data['click_id']) ? $data['click_id'] : ''))),
+            'click_id'       => strip_tags(isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : (isset($data['click_id']) ? $data['click_id'] : (isset($trackingParams['fbclid']) ? $trackingParams['fbclid'] : '')))),
             'product_name'   => isset($campaign->product_name) ? $campaign->product_name : '',
         ];
 
@@ -313,6 +321,9 @@ class PublicController
             // Do NOT fall back to HTTP_REFERER here — it would be the konektor redirect URL.
             $refUrl = isset($_GET['_ref']) ? substr($_GET['_ref'], 0, 2000) : '';
 
+            // Parse fbclid + UTM from _src (landing page URL forwarded by redirect)
+            $waTracking = Helper::parseTrackingParams($srcUrl ?: null);
+
             // Session guard: prevent duplicate lead + events on browser back-navigation.
             // Key is per-campaign + per-visitor so each unique visitor gets their own slot.
             $waSessKey = 'knk_wa_' . $campaign->id . '_' . md5($vid ?: session_id());
@@ -330,6 +341,7 @@ class PublicController
                 $isRepeat = $campaign->double_lead_enabled
                     ? Lead::checkDouble($campaign->id, '', '', $vid, '', $srcUrl)
                     : false;
+                $waClickId = isset($_GET['click_id']) ? $_GET['click_id'] : (isset($waTracking['fbclid']) ? $waTracking['fbclid'] : '');
                 try {
                     $leadId = Lead::create([
                         'campaign_id' => $campaign->id,
@@ -340,7 +352,8 @@ class PublicController
                         '_vid'        => $vid,
                         'source_url'  => $srcUrl,
                         'referrer'    => $refUrl,
-                        'click_id'    => isset($_GET['click_id']) ? $_GET['click_id'] : '',
+                        'click_id'    => $waClickId,
+                        'extra_data'  => !empty($waTracking) ? $waTracking : null,
                     ]);
                     if ($isRepeat) {
                         Lead::markDouble($leadId);
@@ -375,6 +388,13 @@ class PublicController
             $sourceUrl = ($decrypted && !empty($decrypted->source_url)) ? $decrypted->source_url : $srcFromGet;
             $referrer  = ($decrypted && !empty($decrypted->referrer))   ? $decrypted->referrer   : $refFromGet;
 
+            // Decode extra_data from lead (contains fbclid + UTM params saved at submit/wa_link time)
+            $leadExtraData = [];
+            if ($lead && !empty($lead->extra_data)) {
+                $decoded = json_decode($lead->extra_data, true);
+                if (is_array($decoded)) $leadExtraData = $decoded;
+            }
+
             $eventData = [
                 'name'         => $decrypted && isset($decrypted->name)   ? $decrypted->name   : '',
                 'phone'        => $decrypted && isset($decrypted->phone)  ? $decrypted->phone  : '',
@@ -385,6 +405,7 @@ class PublicController
                 'ip'           => Helper::getClientIp(),
                 'user_agent'   => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '',
                 'click_id'     => $clickId,
+                'extra_data'   => $leadExtraData,
             ];
 
             $metaCfg   = MetaApi::getConfig($campaign);
@@ -399,16 +420,6 @@ class PublicController
             }
             if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token'])) {
                 SnackApi::sendEvent('thanks_page', $eventData, $snackCfg);
-            }
-
-            // Also fire form_submit event for wa_link click (equivalent to conversion)
-            if ($campaign->type === 'wa_link') {
-                if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token'])) {
-                    MetaApi::sendEvent($metaCfg['form_submit_event'] ?? '', $eventData, $metaCfg);
-                }
-                if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token'])) {
-                    TiktokApi::sendEvent('form_submit', $eventData, $tiktokCfg);
-                }
             }
 
             // Mark in session so back-button revisit to the same thanks URL won't re-fire pixels
@@ -455,6 +466,14 @@ class PublicController
         if (!$campaign) { http_response_code(204); return; }
 
         self::setCorsHeaders($campaign);
+
+        // Block bots — they must not create PageView CAPI events (causes inflated Meta/TikTok counts)
+        if (Helper::isBotRequest()) { http_response_code(204); return; }
+
+        // Session dedup: one PageView per campaign per session (prevents reload/refresh double-fire)
+        $sessKey = 'knk_pv_' . $campaign->id;
+        if (isset($_SESSION[$sessKey])) { http_response_code(204); return; }
+        $_SESSION[$sessKey] = 1;
 
         $sourceUrl = isset($_GET['url']) ? $_GET['url'] : '';
         $eventData = [

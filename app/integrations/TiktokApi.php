@@ -36,6 +36,10 @@ class TiktokApi
             $userData['ttp'] = $_COOKIE['_ttp'];
         }
 
+        // ttclid from extra_data (captured from URL on landing page)
+        $ttclid = isset($leadData['extra_data']['ttclid']) ? $leadData['extra_data']['ttclid'] : '';
+        if ($ttclid) $userData['ttclid'] = $ttclid;
+
         if (!empty($leadData['email'])) {
             $userData['email'] = hash('sha256', strtolower(trim($leadData['email'])));
         }

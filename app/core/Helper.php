@@ -239,6 +239,55 @@ class Helper
         return false;
     }
 
+    /**
+     * Parse tracking params from a URL or $_GET.
+     * Returns array with fbclid, ttclid, kwai_click_id, UTM params — only non-empty keys.
+     * Side-effect: sets _fbc cookie from fbclid for Meta CAPI dedup.
+     *
+     * @param string|null $url  Full URL to parse (null = use current $_GET)
+     */
+    public static function parseTrackingParams($url = null)
+    {
+        if ($url !== null) {
+            $qs = parse_url($url, PHP_URL_QUERY);
+            $params = [];
+            if ($qs) parse_str($qs, $params);
+        } else {
+            $params = $_GET;
+        }
+
+        $result = [];
+
+        // Meta — fbclid + set _fbc cookie for CAPI dedup
+        $fbclid = isset($params['fbclid']) ? substr(trim($params['fbclid']), 0, 500) : '';
+        if ($fbclid !== '') {
+            $result['fbclid'] = $fbclid;
+            // fb.1.{timestamp_ms}.{fbclid} — format resmi Meta untuk _fbc cookie
+            $fbc = 'fb.1.' . (time() * 1000) . '.' . $fbclid;
+            if (!isset($_COOKIE['_fbc'])) {
+                setcookie('_fbc', $fbc, time() + 7776000, '/', '', false, false); // 90 days
+                $_COOKIE['_fbc'] = $fbc;
+            }
+        }
+
+        // TikTok — ttclid (TikTok Click ID, dipakai untuk Events API dedup)
+        $ttclid = isset($params['ttclid']) ? substr(trim($params['ttclid']), 0, 500) : '';
+        if ($ttclid !== '') $result['ttclid'] = $ttclid;
+
+        // SnackVideo/Kwai — click_id atau kwai_click_id
+        $kwaiId = isset($params['kwai_click_id']) ? substr(trim($params['kwai_click_id']), 0, 500)
+                : (isset($params['click_id'])      ? substr(trim($params['click_id']),      0, 500) : '');
+        if ($kwaiId !== '') $result['kwai_click_id'] = $kwaiId;
+
+        // UTM params
+        foreach (['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_id'] as $k) {
+            $v = isset($params[$k]) ? substr(trim(strip_tags($params[$k])), 0, 200) : '';
+            if ($v !== '') $result[$k] = $v;
+        }
+
+        return $result;
+    }
+
     public static function fireWebhook($event, $data)
     {
         $url    = Settings::get('webhook_url');

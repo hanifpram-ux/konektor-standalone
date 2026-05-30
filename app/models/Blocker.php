@@ -5,12 +5,12 @@ class Blocker
     public static function isBlocked($campaignId, $ip, $fingerprint, $cookieId)
     {
         $sql = "SELECT 1 FROM " . DB::t('blocked') . "
-                WHERE (campaign_id IS NULL OR campaign_id = ?) AND (
+                WHERE (
                   (block_type = 'ip' AND (ip_address = ? OR fingerprint = ?)) OR
                   (block_type = 'cookie' AND cookie_id = ?) OR
                   (block_type = 'both' AND (ip_address = ? OR fingerprint = ? OR cookie_id = ?))
                 ) LIMIT 1";
-        $params = [$campaignId ?: null, $ip, $fingerprint, $cookieId, $ip, $fingerprint, $cookieId];
+        $params = [$ip, $fingerprint, $cookieId, $ip, $fingerprint, $cookieId];
         return (bool)DB::val($sql, $params);
     }
 
@@ -19,24 +19,46 @@ class Blocker
         $blockBy = in_array($data['block_by'] ?? 'both', ['ip','cookie','both']) ? ($data['block_by'] ?? 'both') : 'both';
         $ip      = isset($data['ip_address'])  ? $data['ip_address']  : null;
         $cookie  = isset($data['cookie_id'])   ? $data['cookie_id']   : null;
+        $fp      = isset($data['fingerprint']) ? $data['fingerprint'] : null;
 
-        $saveIp     = in_array($blockBy, ['ip', 'both'], true)     ? $ip     : null;
-        $saveCookie = in_array($blockBy, ['cookie', 'both'], true) ? $cookie : null;
-        $saveFp     = in_array($blockBy, ['ip', 'both'], true)     ? (isset($data['fingerprint']) ? $data['fingerprint'] : null) : null;
-
-        return DB::insert('blocked', [
+        $base = [
             'campaign_id'   => isset($data['campaign_id'])   ? $data['campaign_id']   : null,
-            'ip_address'    => $saveIp,
-            'fingerprint'   => $saveFp,
-            'cookie_id'     => $saveCookie,
             'phone'         => isset($data['phone'])         ? $data['phone']         : null,
             'email'         => isset($data['email'])         ? $data['email']         : null,
             'reason'        => strip_tags(isset($data['reason'])        ? $data['reason']        : ''),
-            'block_type'    => $blockBy,
             'blocked_by'    => isset($data['blocked_by'])    ? $data['blocked_by']    : null,
             'operator_name' => strip_tags(isset($data['operator_name']) ? $data['operator_name'] : ''),
             'blocked_at'    => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        if ($blockBy === 'both') {
+            // Save two separate records so each filter is independently enforced
+            $lastId = null;
+            if ($ip) {
+                $lastId = DB::insert('blocked', array_merge($base, [
+                    'block_type'  => 'ip',
+                    'ip_address'  => $ip,
+                    'fingerprint' => $fp,
+                    'cookie_id'   => null,
+                ]));
+            }
+            if ($cookie) {
+                $lastId = DB::insert('blocked', array_merge($base, [
+                    'block_type'  => 'cookie',
+                    'ip_address'  => null,
+                    'fingerprint' => null,
+                    'cookie_id'   => $cookie,
+                ]));
+            }
+            return $lastId;
+        }
+
+        return DB::insert('blocked', array_merge($base, [
+            'block_type'  => $blockBy,
+            'ip_address'  => in_array($blockBy, ['ip'], true) ? $ip     : null,
+            'fingerprint' => in_array($blockBy, ['ip'], true) ? $fp     : null,
+            'cookie_id'   => in_array($blockBy, ['cookie'], true) ? $cookie : null,
+        ]));
     }
 
     public static function unblock($id)

@@ -107,11 +107,16 @@ HTML;
     private static function buildUserData($lead)
     {
         $ud = [
-            'client_ip_address' => Helper::getClientIp(),
-            'client_user_agent' => substr(isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '', 0, 512),
+            'client_ip_address' => isset($lead['ip']) ? $lead['ip'] : Helper::getClientIp(),
+            'client_user_agent' => substr(isset($lead['user_agent']) ? $lead['user_agent'] : (isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''), 0, 512),
         ];
         if (!empty($_COOKIE['_fbp'])) $ud['fbp'] = $_COOKIE['_fbp'];
+        // _fbc: prefer cookie set by parseTrackingParams (from fbclid), fallback to existing cookie
         if (!empty($_COOKIE['_fbc'])) $ud['fbc'] = $_COOKIE['_fbc'];
+        // If no cookie but fbclid was stored in extra_data (e.g. server-side only, no browser cookie)
+        if (empty($ud['fbc']) && !empty($lead['extra_data']['fbclid'])) {
+            $ud['fbc'] = 'fb.1.' . (time() * 1000) . '.' . $lead['extra_data']['fbclid'];
+        }
 
         if (!empty($lead['email'])) {
             $ud['em'] = [hash('sha256', strtolower(trim($lead['email'])))];

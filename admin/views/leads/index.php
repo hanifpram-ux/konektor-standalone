@@ -27,10 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $d      = Lead::decrypt(clone $l);
             $blockBy = in_array($_POST['block_by']??'both', ['ip','cookie','both']) ? ($_POST['block_by']??'both') : 'both';
             Blocker::block([
-                'campaign_id'  => $l->campaign_id,
+                'campaign_id'  => null,
                 'ip_address'   => $l->ip_address,
-                'fingerprint'  => $blockBy !== 'cookie' ? $l->fingerprint : null,
-                'cookie_id'    => $blockBy !== 'ip'     ? $l->cookie_id   : null,
+                'fingerprint'  => $l->fingerprint,
+                'cookie_id'    => $l->cookie_id,
                 'phone'        => $d->phone,
                 'email'        => $d->email,
                 'reason'       => strip_tags(isset($_POST['block_reason'])?$_POST['block_reason']:'Blocked by admin'),
@@ -46,12 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($_POST['_unblock_lead_id'])) {
         $l = Lead::find((int)$_POST['_unblock_lead_id']);
         if ($l) {
-            // Remove all blocker entries matching this lead's IP or cookie (campaign-specific + global)
             if ($l->ip_address) {
-                DB::query("DELETE FROM " . DB::t('blocked') . " WHERE ip_address = ? AND (campaign_id = ? OR campaign_id IS NULL)", [$l->ip_address, $l->campaign_id]);
+                DB::query("DELETE FROM " . DB::t('blocked') . " WHERE ip_address = ?", [$l->ip_address]);
             }
             if ($l->cookie_id) {
-                DB::query("DELETE FROM " . DB::t('blocked') . " WHERE cookie_id = ? AND (campaign_id = ? OR campaign_id IS NULL)", [$l->cookie_id, $l->campaign_id]);
+                DB::query("DELETE FROM " . DB::t('blocked') . " WHERE cookie_id = ?", [$l->cookie_id]);
             }
             Lead::updateStatus($l->id, 'new');
             flashSet('success', 'Lead di-unblock.');
@@ -75,12 +74,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$fCamp   = (int)(isset($_GET['campaign_id']) ? $_GET['campaign_id'] : 0);
-$fStatus = isset($_GET['status']) ? $_GET['status'] : '';
-$fSearch = isset($_GET['search']) ? $_GET['search'] : '';
-$fType   = isset($_GET['type'])   ? $_GET['type']   : ''; // 'form' | 'link' | ''
-$page    = max(1, (int)(isset($_GET['page']) ? $_GET['page'] : 1));
-$perPage = 30;
+$fCamp     = (int)(isset($_GET['campaign_id']) ? $_GET['campaign_id'] : 0);
+$fStatus   = isset($_GET['status'])    ? $_GET['status']    : '';
+$fSearch   = isset($_GET['search'])    ? $_GET['search']    : '';
+$fType     = isset($_GET['type'])      ? $_GET['type']      : ''; // 'form' | 'link' | ''
+$fDateFrom = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$fDateTo   = isset($_GET['date_to'])   ? $_GET['date_to']   : '';
+$page      = max(1, (int)(isset($_GET['page']) ? $_GET['page'] : 1));
+$perPage   = 30;
+$todayStart = date('Y-m-d') . ' 00:00:00';
+
+// Sanitize tanggal
+$fDateFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $fDateFrom) ? $fDateFrom : '';
+$fDateTo   = preg_match('/^\d{4}-\d{2}-\d{2}$/', $fDateTo)   ? $fDateTo   : '';
 
 $campTypeArg = $fType === 'link' ? 'wa_link' : ($fType === 'form' ? 'form' : '');
 $args = array_filter([
@@ -88,6 +94,8 @@ $args = array_filter([
     'status'      => $fStatus,
     'search'      => $fSearch,
     'camp_type'   => $campTypeArg ?: null,
+    'date_from'   => $fDateFrom ? $fDateFrom . ' 00:00:00' : null,
+    'date_to'     => $fDateTo   ? $fDateTo   . ' 23:59:59' : null,
     'page'        => $page,
     'per_page'    => $perPage,
 ]);
@@ -96,12 +104,18 @@ $total = Lead::count(array_filter([
     'campaign_id' => $fCamp ?: null,
     'status'      => $fStatus,
     'camp_type'   => $campTypeArg ?: null,
+    'date_from'   => $fDateFrom ? $fDateFrom . ' 00:00:00' : null,
+    'date_to'     => $fDateTo   ? $fDateTo   . ' 23:59:59' : null,
 ]));
 $pages = (int)ceil($total / $perPage);
 $camps = Campaign::all();
 
 $totalForm = Lead::count(['camp_type' => 'form']);
 $totalLink = Lead::count(['camp_type' => 'wa_link']);
+
+// Leads hari ini (scope ke kampanye jika ada filter)
+$todayArgs = array_filter(['campaign_id' => $fCamp ?: null, 'date_from' => $todayStart]);
+$todayCount = Lead::count($todayArgs);
 
 $sb = ['new'=>'badge-blue','contacted'=>'badge-warning','purchased'=>'badge-success','cancelled'=>'badge-secondary','blocked'=>'badge-destructive'];
 $sl = ['new'=>'Baru','contacted'=>'Dihubungi','purchased'=>'Beli','cancelled'=>'Batal','blocked'=>'Blokir'];
@@ -129,7 +143,11 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       <?php else: ?>
       <h1 class="page-title">Leads</h1>
       <?php endif; ?>
-      <p class="page-desc"><?= number_format($total) ?> lead<?= $fType ? ' ('.$fType.')' : '' ?></p>
+      <p class="page-desc">
+        <?= number_format($total) ?> lead<?= $fType ? ' ('.$fType.')' : '' ?>
+        &nbsp;·&nbsp;
+        <span style="color:hsl(142 76% 36%);font-weight:600;"><?= number_format($todayCount) ?> hari ini</span>
+      </p>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <?php if ($fCamp): ?>
@@ -148,19 +166,20 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
   <?php include dirname(__DIR__, 2) . '/inc/flash.php'; ?>
 
   <!-- Tab jenis kampanye -->
+  <?php $tabBase = array_filter(['campaign_id'=>$fCamp,'status'=>$fStatus,'search'=>$fSearch,'date_from'=>$fDateFrom,'date_to'=>$fDateTo]); ?>
   <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid hsl(var(--border));padding-bottom:8px;">
-    <a href="?<?= http_build_query(array_filter(['campaign_id'=>$fCamp,'status'=>$fStatus,'search'=>$fSearch])) ?>"
+    <a href="?<?= http_build_query($tabBase) ?>"
        class="tab-item <?= $fType===''?'active':'' ?>" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;text-decoration:none;color:hsl(var(--foreground));background:hsl(var(--muted));border:1px solid hsl(var(--border));transition:all 0.15s ease;font-size:13px;font-weight:500;<?= $fType===''?'background:hsl(var(--primary) / 0.1);border-color:hsl(var(--primary));color:hsl(var(--primary));':'' ?>">
       <span>Semua</span>
       <span class="badge badge-secondary" style="font-size:10px;padding:2px 6px;"><?= number_format($totalForm + $totalLink) ?></span>
     </a>
-    <a href="?type=form&<?= http_build_query(array_filter(['campaign_id'=>$fCamp,'status'=>$fStatus,'search'=>$fSearch])) ?>"
+    <a href="?type=form&<?= http_build_query($tabBase) ?>"
        class="tab-item <?= $fType==='form'?'active':'' ?>" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;text-decoration:none;color:hsl(var(--foreground));background:hsl(var(--muted));border:1px solid hsl(var(--border));transition:all 0.15s ease;font-size:13px;font-weight:500;<?= $fType==='form'?'background:hsl(var(--primary) / 0.1);border-color:hsl(var(--primary));color:hsl(var(--primary));':'' ?>">
       <?= icon('file-text','',14) ?>
       <span>Form Lead</span>
       <span class="badge <?= $fType==='form'?'badge-blue':'badge-secondary' ?>" style="font-size:10px;padding:2px 6px;"><?= number_format($totalForm) ?></span>
     </a>
-    <a href="?type=link&<?= http_build_query(array_filter(['campaign_id'=>$fCamp,'status'=>$fStatus,'search'=>$fSearch])) ?>"
+    <a href="?type=link&<?= http_build_query($tabBase) ?>"
        class="tab-item <?= $fType==='link'?'active':'' ?>" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;text-decoration:none;color:hsl(var(--foreground));background:hsl(var(--muted));border:1px solid hsl(var(--border));transition:all 0.15s ease;font-size:13px;font-weight:500;<?= $fType==='link'?'background:hsl(var(--primary) / 0.1);border-color:hsl(var(--primary));color:hsl(var(--primary));':'' ?>">
       <?= icon('link','',14) ?>
       <span>Klik Link</span>
@@ -188,6 +207,8 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       <option value="<?= $c->id ?>" <?= $fCamp==$c->id?'selected':'' ?>><?= ae($c->name) ?></option>
       <?php endforeach; ?>
     </select>
+    <input type="date" name="date_from" value="<?= ae($fDateFrom) ?>" class="input" style="width:145px;" title="Dari tanggal">
+    <input type="date" name="date_to"   value="<?= ae($fDateTo) ?>"   class="input" style="width:145px;" title="Sampai tanggal">
     <button class="btn btn-default btn-sm"><?= icon('filter') ?> Filter</button>
     <a href="?<?= $fType?'type='.ae($fType):'' ?>" class="btn btn-outline btn-sm"><?= icon('x') ?></a>
   </form>
@@ -197,7 +218,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
     <table>
       <thead>
         <tr>
-          <th style="width:32px;"></th>
+          <th style="width:36px;text-align:center;color:hsl(var(--muted-foreground));font-size:11px;">#</th>
           <th>Identitas</th>
           <th>Kampanye &amp; CS</th>
           <th>Status</th>
@@ -208,11 +229,12 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       </thead>
       <tbody>
         <?php if (empty($leads)): ?>
-        <tr><td colspan="7" style="text-align:center;padding:48px;color:hsl(var(--muted-foreground));">
+        <tr><td colspan="8" style="text-align:center;padding:48px;color:hsl(var(--muted-foreground));">
           Tidak ada lead ditemukan.
         </td></tr>
         <?php else: ?>
-        <?php foreach ($leads as $l):
+        <?php $rowNum = ($page - 1) * $perPage; ?>
+        <?php foreach ($leads as $l): $rowNum++;
           $ua       = isset($l->user_agent) ? $l->user_agent : '';
           $isMobile = (bool)preg_match('/Mobile|Android|iPhone|iPad/i', $ua);
           $browser  = 'Browser';
@@ -226,16 +248,44 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
           $waUrl    = (!$isLink && $l->phone) ? Helper::waUrl($l->phone) : '';
           $src      = isset($l->source_url) ? $l->source_url : (isset($l->referrer) ? $l->referrer : '');
           $srcHost  = $src ? (parse_url($src, PHP_URL_HOST) ?: substr($src, 0, 30)) : '';
+          // Parse extra_data untuk badge traffic source di tabel
+          $rowExtra = isset($l->extra_data) && $l->extra_data ? json_decode($l->extra_data, true) : [];
+          if (!is_array($rowExtra)) $rowExtra = [];
+          $utmSrc  = isset($rowExtra['utm_source']) ? strtolower($rowExtra['utm_source']) : '';
+          $utmMed  = isset($rowExtra['utm_medium'])  ? strtolower($rowExtra['utm_medium'])  : '';
+          // Tentukan label + warna sumber traffic
+          $trafficLabel = ''; $trafficColor = '';
+          if (!empty($rowExtra['fbclid']) || strpos($utmSrc,'facebook')!==false || strpos($utmSrc,'instagram')!==false || $utmSrc==='fb' || $utmSrc==='ig') {
+              $trafficLabel = $utmSrc==='ig'||strpos($utmSrc,'instagram')!==false ? 'Instagram' : 'Facebook';
+              $trafficColor = 'hsl(217 91% 60%)';
+          } elseif (!empty($rowExtra['ttclid']) || strpos($utmSrc,'tiktok')!==false) {
+              $trafficLabel = 'TikTok';
+              $trafficColor = 'hsl(0 0% 10%)';
+          } elseif (!empty($rowExtra['kwai_click_id']) || strpos($utmSrc,'snack')!==false || strpos($utmSrc,'kwai')!==false) {
+              $trafficLabel = 'SnackVideo';
+              $trafficColor = 'hsl(25 95% 53%)';
+          } elseif (strpos($utmSrc,'google')!==false || $utmSrc==='gdn') {
+              $trafficLabel = 'Google';
+              $trafficColor = 'hsl(142 76% 36%)';
+          } elseif ($utmSrc !== '') {
+              $trafficLabel = ucfirst($utmSrc) . ($utmMed ? ' / ' . $utmMed : '');
+              $trafficColor = 'hsl(var(--muted-foreground))';
+          }
         ?>
         <tr style="<?= $l->is_double?'background:hsl(38 92% 50%/0.04);':'' ?>" id="lead-row-<?= $l->id ?>">
 
-          <!-- Tipe icon -->
+          <!-- Nomor urut -->
+          <td style="text-align:center;color:hsl(var(--muted-foreground));font-size:11px;padding-right:0;"><?= $rowNum ?></td>
+
+
+        <!--
           <td style="padding-right:0;">
             <div title="<?= $isLink?'Klik Link':'Form Lead' ?>"
               style="width:28px;height:28px;border-radius:6px;background:<?= $isLink?'hsl(142 76% 36%/0.1)':'hsl(217 91% 60%/0.1)' ?>;display:flex;align-items:center;justify-content:center;color:<?= $isLink?'hsl(142 76% 36%)':'hsl(217 91% 60%)' ?>;">
               <?= icon($isLink?'link':'file-text','',13) ?>
             </div>
           </td>
+          -->
 
           <!-- Identitas -->
           <td>
@@ -302,7 +352,13 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
                 <?php if ($l->ip_address && !$isLink): ?>
                 <div style="font-size:11px;color:hsl(var(--muted-foreground));font-family:monospace;"><?= ae($l->ip_address) ?></div>
                 <?php endif; ?>
-                <?php if ($srcHost): ?>
+                <?php if ($trafficLabel): ?>
+                <div style="margin-top:3px;">
+                  <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:<?= $trafficColor ?>/0.12;color:<?= $trafficColor ?>;border:1px solid <?= $trafficColor ?>/0.3;">
+                    <?= ae($trafficLabel) ?>
+                  </span>
+                </div>
+                <?php elseif ($srcHost): ?>
                 <div style="font-size:10px;color:hsl(var(--muted-foreground));margin-top:1px;" title="<?= ae($src) ?>"><?= ae($srcHost) ?></div>
                 <?php endif; ?>
               </div>
@@ -336,41 +392,108 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
         </tr>
 
         <!-- Detail row -->
+        <?php
+        $extraJson = isset($l->extra_data) && $l->extra_data ? json_decode($l->extra_data, true) : [];
+        if (!is_array($extraJson)) $extraJson = [];
+
+        // Tracking params dari extra_data
+        $trackingMap = [
+            'fbclid'        => ['Meta Click ID',      'hsl(217 91% 60%)'],
+            'ttclid'        => ['TikTok Click ID',     'hsl(0 0% 15%)'],
+            'kwai_click_id' => ['SnackVideo Click ID', 'hsl(25 95% 53%)'],
+            'utm_source'    => ['UTM Source',          null],
+            'utm_medium'    => ['UTM Medium',          null],
+            'utm_campaign'  => ['UTM Campaign',        null],
+            'utm_content'   => ['UTM Content',         null],
+            'utm_term'      => ['UTM Term',            null],
+            'utm_id'        => ['UTM ID',              null],
+        ];
+        $hasTracking = false;
+        foreach (array_keys($trackingMap) as $tk) {
+            if (!empty($extraJson[$tk])) { $hasTracking = true; break; }
+        }
+        // Extra fields selain tracking params
+        $trackingKeys = array_keys($trackingMap);
+        $customExtra = array_filter($extraJson, function($v, $k) use ($trackingKeys) {
+            return !in_array($k, $trackingKeys) && $k !== 'click_id' && !empty($v);
+        }, ARRAY_FILTER_USE_BOTH);
+        ?>
         <tr id="row-detail-<?= $l->id ?>" class="hidden">
-          <td colspan="7" style="background:hsl(var(--muted));padding:14px 16px 14px 52px;">
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px;">
-              <?php
-              $detailItems = $isLink ? [
-                  ['IP Address',   $l->ip_address],
-                  ['Perangkat',    ($isMobile?'Mobile':'Desktop').' · '.$browser],
-                  ['Cookie ID',    isset($l->cookie_id)?$l->cookie_id:''],
-                  ['Source URL',   $src],
-                  ['Referrer',     isset($l->referrer)?$l->referrer:''],
-                  ['User Agent',   $ua],
-                  ['Fingerprint',  isset($l->fingerprint)?$l->fingerprint:''],
-                  ['Click ID',     isset($l->extra_data)&&$l->extra_data ? (isset(json_decode($l->extra_data,true)['click_id'])?json_decode($l->extra_data,true)['click_id']:'') : ''],
-              ] : [
-                  ['Alamat',      isset($l->address)?$l->address:''],
-                  ['Jumlah',      isset($l->quantity)?$l->quantity:''],
-                  ['Pesan',       isset($l->custom_message)?$l->custom_message:''],
-                  ['IP Address',  $l->ip_address],
-                  ['Perangkat',   ($isMobile?'Mobile':'Desktop').' · '.$browser],
-                  ['Source URL',  $src],
-                  ['User Agent',  $ua],
-                  ['Referrer',    isset($l->referrer)?$l->referrer:''],
-              ];
-              foreach ($detailItems as $item):
-                  if (!$item[1]) continue;
-                  $wide = in_array($item[0], ['User Agent','Source URL','Referrer','Click ID','Fingerprint']);
-              ?>
-              <div <?= $wide?'style="grid-column:span 2;"':'' ?>>
-                <div style="font-size:10px;color:hsl(var(--muted-foreground));font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;"><?= ae($item[0]) ?></div>
-                <div style="font-size:12px;word-break:break-all;"><?= ae($item[1]) ?></div>
+          <td colspan="8" style="background:hsl(var(--muted));padding:16px 16px 16px 52px;">
+
+            <?php if (!$isLink && (isset($l->address)&&$l->address || isset($l->quantity)&&$l->quantity || isset($l->custom_message)&&$l->custom_message)): ?>
+            <!-- Form fields -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid hsl(var(--border));">
+              <?php foreach ([['Alamat', isset($l->address)?$l->address:''], ['Jumlah', isset($l->quantity)?$l->quantity:''], ['Pesan', isset($l->custom_message)?$l->custom_message:'']] as $fi): if (!$fi[1]) continue; ?>
+              <div style="<?= $fi[0]==='Pesan'?'grid-column:span 2;':'' ?>">
+                <div style="font-size:10px;color:hsl(var(--muted-foreground));font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;"><?= ae($fi[0]) ?></div>
+                <div style="font-size:12px;"><?= ae($fi[1]) ?></div>
               </div>
               <?php endforeach; ?>
             </div>
+            <?php endif; ?>
+
+            <!-- Info teknis + tracking dalam 2 kolom -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+              <!-- Kolom kiri: teknis -->
+              <div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:hsl(var(--muted-foreground));margin-bottom:8px;">Info Teknis</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <?php
+                  $techItems = [
+                      ['IP Address',  $l->ip_address, false],
+                      ['Perangkat',   ($isMobile?'Mobile':'Desktop').' · '.$browser, false],
+                      ['Source URL',  $src, true],
+                      ['Referrer',    isset($l->referrer)?$l->referrer:'', true],
+                      ['Cookie ID',   isset($l->cookie_id)?$l->cookie_id:'', false],
+                      ['User Agent',  $ua, true],
+                      ['Fingerprint', isset($l->fingerprint)?$l->fingerprint:'', false],
+                  ];
+                  foreach ($techItems as [$tLabel, $tVal, $tBreak]):
+                      if (!$tVal) continue;
+                  ?>
+                  <div>
+                    <div style="font-size:10px;color:hsl(var(--muted-foreground));font-weight:600;text-transform:uppercase;letter-spacing:.4px;"><?= ae($tLabel) ?></div>
+                    <?php if ($tLabel === 'Source URL' || $tLabel === 'Referrer'): ?>
+                    <a href="<?= ae($tVal) ?>" target="_blank" style="font-size:11px;color:hsl(var(--primary));word-break:break-all;text-decoration:none;" title="<?= ae($tVal) ?>"><?= ae(strlen($tVal)>70?substr($tVal,0,70).'…':$tVal) ?></a>
+                    <?php else: ?>
+                    <div style="font-size:11px;word-break:break-all;font-family:<?= in_array($tLabel,['IP Address','Cookie ID','Fingerprint'])?'monospace':'inherit' ?>;color:<?= $tLabel==='IP Address'?'hsl(var(--foreground))':'hsl(var(--muted-foreground))' ?>;"><?= ae(strlen($tVal)>80?substr($tVal,0,80).'…':$tVal) ?></div>
+                    <?php endif; ?>
+                  </div>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+
+              <!-- Kolom kanan: tracking -->
+              <div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:hsl(var(--muted-foreground));margin-bottom:8px;">Tracking &amp; Source</div>
+                <?php if ($hasTracking): ?>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <?php foreach ($trackingMap as $tKey => [$tLabel, $tColor]): if (empty($extraJson[$tKey])) continue; ?>
+                  <div>
+                    <div style="font-size:10px;color:hsl(var(--muted-foreground));font-weight:600;text-transform:uppercase;letter-spacing:.4px;"><?= ae($tLabel) ?></div>
+                    <div style="font-size:11px;word-break:break-all;font-family:<?= in_array($tKey,['fbclid','ttclid','kwai_click_id'])?'monospace':'inherit' ?>;<?= $tColor?'color:'.$tColor.';font-weight:600;':'' ?>">
+                      <?= ae(strlen($extraJson[$tKey])>60?substr($extraJson[$tKey],0,60).'…':$extraJson[$tKey]) ?>
+                    </div>
+                  </div>
+                  <?php endforeach; ?>
+                  <?php foreach ($customExtra as $ck => $cv): ?>
+                  <div>
+                    <div style="font-size:10px;color:hsl(var(--muted-foreground));font-weight:600;text-transform:uppercase;letter-spacing:.4px;"><?= ae($ck) ?></div>
+                    <div style="font-size:11px;word-break:break-all;"><?= ae(is_array($cv)?json_encode($cv):$cv) ?></div>
+                  </div>
+                  <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                <div style="font-size:12px;color:hsl(var(--muted-foreground));font-style:italic;">Tidak ada data tracking (tidak ada fbclid/ttclid/UTM di URL saat kunjungan).</div>
+                <?php endif; ?>
+              </div>
+
+            </div><!-- /grid -->
+
             <?php if (!$isLink): ?>
-            <div style="display:flex;gap:8px;align-items:center;">
+            <div style="display:flex;gap:8px;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid hsl(var(--border));">
               <input id="note-<?= $l->id ?>" type="text" value="<?= ae(isset($l->status_note)?$l->status_note:'') ?>"
                 class="input" style="flex:1;padding:6px 12px;font-size:12px;" placeholder="Tambahkan catatan...">
               <button class="btn btn-default btn-sm knk-save-note"
@@ -379,6 +502,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
               </button>
             </div>
             <?php endif; ?>
+
           </td>
         </tr>
 
@@ -392,7 +516,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
   <?php if ($pages > 1): ?>
   <div class="pagination">
     <?php
-    $q = array_filter(['type'=>$fType,'search'=>$fSearch,'status'=>$fStatus,'campaign_id'=>$fCamp?:null]);
+    $q = array_filter(['type'=>$fType,'search'=>$fSearch,'status'=>$fStatus,'campaign_id'=>$fCamp?:null,'date_from'=>$fDateFrom,'date_to'=>$fDateTo]);
     for ($p = max(1,$page-3); $p <= min($pages,$page+3); $p++):
     ?>
     <a href="?<?= http_build_query(array_merge($q,['page'=>$p])) ?>"

@@ -37,7 +37,11 @@ class SnackApi
         if ($isTest && !empty($cfg['test_click_id'])) {
             $clickId = $cfg['test_click_id'];
         } else {
-            $clickId = isset($leadData['click_id']) ? $leadData['click_id'] : (isset($_GET['click_id']) ? $_GET['click_id'] : (isset($_GET['clickid']) ? $_GET['clickid'] : ''));
+            // Prefer kwai_click_id from extra_data (captured from URL), then click_id field, then $_GET
+            $clickId = isset($leadData['extra_data']['kwai_click_id']) ? $leadData['extra_data']['kwai_click_id']
+                     : (isset($leadData['click_id'])   ? $leadData['click_id']
+                     : (isset($_GET['click_id'])        ? $_GET['click_id']
+                     : (isset($_GET['clickid'])         ? $_GET['clickid'] : '')));
         }
 
         $payload = [
@@ -96,4 +100,3 @@ class SnackApi
         return trim(!empty($cfg[$k]) ? $cfg[$k] : '');
     }
 }
- 
