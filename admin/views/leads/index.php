@@ -99,14 +99,22 @@ $args = array_filter([
     'page'        => $page,
     'per_page'    => $perPage,
 ]);
-$leads = array_map(function($l){ return Lead::decrypt($l); }, Lead::all($args));
-$total = Lead::count(array_filter([
-    'campaign_id' => $fCamp ?: null,
-    'status'      => $fStatus,
-    'camp_type'   => $campTypeArg ?: null,
-    'date_from'   => $fDateFrom ? $fDateFrom . ' 00:00:00' : null,
-    'date_to'     => $fDateTo   ? $fDateTo   . ' 23:59:59' : null,
-]));
+
+if ($fSearch !== '') {
+    // Search dengan decrypt — filter nama/HP/email/IP/kampanye setelah decrypt
+    $searchResult = Lead::search($args);
+    $leads = $searchResult['leads'];
+    $total = $searchResult['total'];
+} else {
+    $leads = array_map(function($l){ return Lead::decrypt($l); }, Lead::all($args));
+    $total = Lead::count(array_filter([
+        'campaign_id' => $fCamp ?: null,
+        'status'      => $fStatus,
+        'camp_type'   => $campTypeArg ?: null,
+        'date_from'   => $fDateFrom ? $fDateFrom . ' 00:00:00' : null,
+        'date_to'     => $fDateTo   ? $fDateTo   . ' 23:59:59' : null,
+    ]));
+}
 $pages = (int)ceil($total / $perPage);
 $camps = Campaign::all();
 
