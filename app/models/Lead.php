@@ -123,11 +123,7 @@ class Lead
         if (!empty($args['camp_type']))   { $where .= ' AND c.type = ?';         $params[] = $args['camp_type']; }
         if (!empty($args['date_from']))   { $where .= ' AND l.created_at >= ?';  $params[] = $args['date_from']; }
         if (!empty($args['date_to']))     { $where .= ' AND l.created_at <= ?';  $params[] = $args['date_to']; }
-        if (!empty($args['search'])) {
-            $q = '%' . $args['search'] . '%';
-            $where  .= ' AND (l.name LIKE ? OR l.phone LIKE ? OR l.email LIKE ?)';
-            $params  = array_merge($params, [$q, $q, $q]);
-        }
+        // Search ditangani di Lead::search() setelah decrypt — tidak di-filter di SQL
 
         $limit  = (int)(isset($args['per_page']) ? $args['per_page'] : 50);
         $offset = ((int)(isset($args['page']) ? $args['page'] : 1) - 1) * $limit;
@@ -143,6 +139,53 @@ class Lead
              WHERE {$where} ORDER BY l.id DESC LIMIT ? OFFSET ?",
             $params
         );
+    }
+
+    /**
+     * Search leads — kolom terenkripsi (name, phone, email) di-filter setelah decrypt,
+     * kolom plaintext (ip, campaign, operator) di-filter di SQL.
+     * Mengembalikan ['leads' => [...], 'total' => int]
+     */
+    public static function search($args = [])
+    {
+        $q       = trim(isset($args['search']) ? $args['search'] : '');
+        $page    = max(1, (int)(isset($args['page']) ? $args['page'] : 1));
+        $perPage = (int)(isset($args['per_page']) ? $args['per_page'] : 30);
+
+        if ($q === '') {
+            $leads = array_map([__CLASS__, 'decrypt'], self::all($args));
+            $total = self::count(array_diff_key($args, ['page'=>1,'per_page'=>1,'search'=>1]));
+            return ['leads' => $leads, 'total' => $total];
+        }
+
+        // Ambil semua lead tanpa pagination untuk filter di PHP
+        $baseArgs             = $args;
+        $baseArgs['per_page'] = 9999;
+        $baseArgs['page']     = 1;
+        unset($baseArgs['search']);
+
+        $all = self::all($baseArgs);
+        $ql  = strtolower($q);
+
+        $matched = [];
+        foreach ($all as $l) {
+            $dec = self::decrypt(clone $l);
+
+            $haystack = strtolower(
+                ( isset($dec->name)    ? $dec->name    : '' ) . ' ' .
+                ( isset($dec->phone)   ? $dec->phone   : '' ) . ' ' .
+                ( isset($dec->email)   ? $dec->email   : '' ) . ' ' .
+                ( isset($dec->address) ? $dec->address : '' )
+            );
+
+            if (strpos($haystack, $ql) !== false) {
+                $matched[] = $dec;
+            }
+        }
+
+        $total  = count($matched);
+        $sliced = array_slice($matched, ($page - 1) * $perPage, $perPage);
+        return ['leads' => $sliced, 'total' => $total];
     }
 
     public static function count($args = [])
