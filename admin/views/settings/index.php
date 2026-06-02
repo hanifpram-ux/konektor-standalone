@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['_save'])) {
         Settings::set('site_url', currentSiteUrl());
         $allowed = ['app_name','cs_panel_slug','telegram_bot_token','encrypt_lead_data',
-                    'webhook_url','webhook_secret','timezone','double_lead_scope'];
+                    'webhook_url','webhook_secret','timezone','double_lead_scope','cron_secret'];
         foreach ($allowed as $k) {
             if (isset($_POST[$k])) Settings::set($k, strip_tags(trim($_POST[$k])));
         }
@@ -378,6 +378,19 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
                 <span style="opacity:.7;">(gunakan <strong>@userinfobot</strong> untuk tahu Chat ID Anda)</span>
               </div>
               <?php endif; ?>
+
+            </div>
+              <div style="border-top:1px solid hsl(var(--border));padding-top:14px;margin-top:2px;">
+                <label class="label">Cron Secret <span style="font-weight:400;color:hsl(var(--muted-foreground));">(untuk rekap harian)</span></label>
+                <div class="pw-wrap">
+                  <input name="cron_secret" type="password" id="cron_secret" value="<?= ae($s['cron_secret'] ?? '') ?>" class="input" placeholder="Isi token rahasia sembarang, min 16 karakter">
+                  <button type="button" class="pw-toggle" onclick="togglePw('cron_secret',this)" tabindex="-1"><?= icon('eye','',15) ?></button>
+                </div>
+                <p class="form-description">
+                  Panggil endpoint ini setiap hari jam 14.00 WIB via cron server atau layanan penjadwal:<br>
+                  <code style="font-size:11px;word-break:break-all;"><?= ae(currentSiteUrl()) ?>/api/cron/daily-recap?secret=<strong><?= ae($s['cron_secret'] ?? 'YOUR_SECRET') ?></strong></code>
+                </p>
+              </div>
 
             </div>
             <div class="card-footer" style="justify-content:space-between;border-top:1px solid hsl(var(--border));padding-top:16px;">

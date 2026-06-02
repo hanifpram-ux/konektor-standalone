@@ -29,41 +29,130 @@ class TelegramApi
         if (empty($operator->telegram_chat_id)) return;
 
         $decrypted = Lead::decrypt(clone $lead);
-        $name      = isset($decrypted->name)         ? $decrypted->name         : '';
-        $phone     = isset($decrypted->phone)        ? $decrypted->phone        : '';
-        $email     = isset($decrypted->email)        ? $decrypted->email        : '';
-        $product   = isset($campaign->product_name)  ? $campaign->product_name  : '';
-        $camName   = isset($campaign->name)          ? $campaign->name          : '';
+        $camName   = isset($campaign->name) ? $campaign->name : '';
 
-        $text = "<b>Lead Baru - {$camName}</b>\n"
-              . "Nama: {$name}\n"
-              . "HP: {$phone}\n"
-              . "Email: {$email}\n"
-              . "Produk: {$product}\n"
-              . date('d/m/Y H:i');
+        // Build field lines based on active form fields only
+        $formCfg    = Campaign::getFormConfig($campaign);
+        $allFields  = isset($formCfg['fields']) ? $formCfg['fields'] : [];
+        $extraFields = isset($formCfg['extra_fields']) ? $formCfg['extra_fields'] : [];
 
-        $buttons = [];
-
-        // Status update buttons mirror CS panel actions.
-        $buttons[] = [
-            ['text' => '✅ Dihubungi', 'callback_data' => 'status:contacted:' . $lead->id],
-            ['text' => '🛒 Beli', 'callback_data' => 'status:purchased:' . $lead->id],
-            ['text' => '❌ Batal', 'callback_data' => 'status:cancelled:' . $lead->id],
+        $fieldMap = [
+            'name'           => isset($decrypted->name)           ? $decrypted->name           : '',
+            'phone'          => isset($decrypted->phone)          ? $decrypted->phone          : '',
+            'email'          => isset($decrypted->email)          ? $decrypted->email          : '',
+            'address'        => isset($decrypted->address)        ? $decrypted->address        : '',
+            'quantity'       => isset($lead->quantity)            ? $lead->quantity            : '',
+            'custom_message' => isset($lead->custom_message)      ? $lead->custom_message      : '',
         ];
 
-        // Follow-up button (URL) — opens WA/email
-        if (!empty($decrypted->phone)) {
-            $followupUrl = Rotator::getFollowupUrl($campaign, $decrypted, $operator);
-            if ($followupUrl) {
-                $buttons[] = [['text' => '📲 Follow-Up Customer', 'url' => $followupUrl]];
+        $lines = "<b>Lead Baru - {$camName}</b>\n";
+
+        foreach ($allFields as $field) {
+            if (empty($field['enabled'])) continue;
+            $key   = isset($field['name'])  ? $field['name']  : '';
+            $label = isset($field['label']) ? $field['label'] : $key;
+            $val   = isset($fieldMap[$key]) ? trim($fieldMap[$key]) : '';
+            if ($val === '') continue;
+            $lines .= "{$label}: {$val}\n";
+        }
+
+        // Extra / custom fields from extra_data
+        if (!empty($extraFields)) {
+            $extraData = [];
+            if (!empty($lead->extra_data)) {
+                $decoded = json_decode($lead->extra_data, true);
+                if (is_array($decoded)) $extraData = $decoded;
+            }
+            foreach ($extraFields as $ef) {
+                if (empty($ef['enabled'])) continue;
+                $key   = isset($ef['name'])  ? $ef['name']  : '';
+                $label = isset($ef['label']) ? $ef['label'] : $key;
+                $val   = isset($extraData[$key]) ? trim((string)$extraData[$key]) : '';
+                if ($val === '') continue;
+                $lines .= "{$label}: {$val}\n";
             }
         }
 
-        $replyMarkup = [
-            'inline_keyboard' => $buttons,
-        ];
+        $lines .= 'Waktu: ' . date('d/m/Y H:i', strtotime($lead->created_at));
 
-        self::sendMessage($operator->telegram_chat_id, $text, $replyMarkup);
+        $buttons = [];
+
+        // Follow-up button + tombol Dihubungi
+        if (!empty($decrypted->phone)) {
+            $followupUrl = Rotator::getFollowupUrl($campaign, $decrypted, $operator);
+            $row = [];
+            if ($followupUrl) {
+                $row[] = ['text' => '📲 Follow-Up Customer', 'url' => $followupUrl];
+            }
+            $row[] = ['text' => '📞 Dihubungi', 'callback_data' => 'status:contacted:' . $lead->id];
+            $buttons[] = $row;
+        }
+
+        $replyMarkup = !empty($buttons) ? ['inline_keyboard' => $buttons] : null;
+
+        self::sendMessage($operator->telegram_chat_id, $lines, $replyMarkup);
+    }
+
+    /**
+     * Kirim rekap lead kemarin ke semua operator yang punya telegram_chat_id.
+     * Dipanggil oleh cron harian jam 14.00 WIB via /api/cron/daily-recap.
+     */
+    public static function sendDailyRecap()
+    {
+        $yesterday  = date('Y-m-d', strtotime('-1 day'));
+        $dateFrom   = $yesterday . ' 00:00:00';
+        $dateTo     = $yesterday . ' 23:59:59';
+
+        $operators  = Operator::all(['status' => 'on']);
+        $sent       = 0;
+
+        foreach ($operators as $op) {
+            if (empty($op->telegram_chat_id)) continue;
+
+            $leads = DB::rows(
+                "SELECT l.*, c.name AS campaign_name FROM " . DB::t('leads') . " l
+                 LEFT JOIN " . DB::t('campaigns') . " c ON c.id = l.campaign_id
+                 WHERE l.operator_id = ? AND l.created_at >= ? AND l.created_at <= ?
+                 ORDER BY l.id ASC",
+                [(int)$op->id, $dateFrom, $dateTo]
+            );
+
+            if (empty($leads)) continue;
+
+            $dayLabel = date('d/m/Y', strtotime($yesterday));
+            $text  = "<b>Rekap Lead Kemarin - {$dayLabel}</b>\n";
+            $text .= "Total: " . count($leads) . " lead\n\n";
+
+            $buttons = [];
+            foreach ($leads as $idx => $lead) {
+                $dec   = Lead::decrypt(clone $lead);
+                $no    = $idx + 1;
+                $name  = trim($dec->name  ?? '');
+                $phone = trim($dec->phone ?? '');
+                $camp  = trim($lead->campaign_name ?? '');
+                $stat  = $lead->status ?? 'new';
+
+                $statLabel = ['new' => '🆕', 'contacted' => '📞', 'purchased' => '✅', 'cancelled' => '❌'][$stat] ?? '❔';
+
+                $text .= "{$no}. {$statLabel} <b>{$name}</b>";
+                if ($phone) $text .= " | {$phone}";
+                if ($camp)  $text .= "\n    📋 {$camp}";
+                $text .= "\n";
+
+                // Satu baris tombol per lead: Beli + Batal dengan nama
+                $shortName = mb_substr($name ?: "Lead {$no}", 0, 15);
+                $buttons[] = [
+                    ['text' => "✅ {$shortName} - Beli",  'callback_data' => 'status:purchased:'  . $lead->id],
+                    ['text' => "❌ {$shortName} - Batal", 'callback_data' => 'status:cancelled:' . $lead->id],
+                ];
+            }
+
+            $replyMarkup = ['inline_keyboard' => $buttons];
+            self::sendMessage($op->telegram_chat_id, $text, $replyMarkup);
+            $sent++;
+        }
+
+        return $sent;
     }
 
     /**

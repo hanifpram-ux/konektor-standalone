@@ -19,6 +19,9 @@ class ApiController
         if ($path === 'auth/login')  { self::authLogin();  return; }
         if ($path === 'auth/logout') { self::authLogout(); return; }
 
+        // Cron endpoint — dilindungi cron_secret, tidak perlu session
+        if ($path === 'cron/daily-recap') { self::cronDailyRecap(); return; }
+
         if (!Auth::check()) {
             $bearer = self::getBearerToken();
             if (!$bearer || !self::validateBearer($bearer)) {
@@ -350,7 +353,7 @@ class ApiController
 
     private static function settingsSave($body)
     {
-        $allowed = ['telegram_bot_token','cs_panel_slug','encrypt_lead_data','app_name'];
+        $allowed = ['telegram_bot_token','cs_panel_slug','encrypt_lead_data','app_name','cron_secret'];
         foreach ($allowed as $k) {
             if (isset($body[$k])) Settings::set($k, strip_tags(trim($body[$k])));
         }
@@ -441,6 +444,21 @@ class ApiController
         }
 
         echo json_encode(['success' => true, 'results' => $results]);
+    }
+
+    private static function cronDailyRecap()
+    {
+        // Validasi secret agar tidak bisa dipanggil sembarang orang
+        $secret  = Settings::get('cron_secret', '');
+        $provided = isset($_GET['secret']) ? $_GET['secret'] : '';
+        if ($secret === '' || $provided !== $secret) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden']);
+            return;
+        }
+
+        $sent = TelegramApi::sendDailyRecap();
+        echo json_encode(['success' => true, 'sent_to' => $sent]);
     }
 
     private static function notFound()

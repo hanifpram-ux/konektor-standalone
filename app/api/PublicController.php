@@ -152,6 +152,31 @@ class PublicController
             return;
         }
 
+        // Validate phone: min 10 digits
+        if ($phone !== '') {
+            $digits = preg_replace('/\D/', '', $phone);
+            if (strlen($digits) < 10) {
+                if ($isJson) {
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['success' => false, 'message' => 'Masukkan nomor HP yang valid (min. 10 digit).']);
+                } else {
+                    echo 'Masukkan nomor HP yang valid (min. 10 digit).';
+                }
+                return;
+            }
+        }
+
+        // Validate email format
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if ($isJson) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Masukkan alamat email yang valid (contoh: nama@domain.com).']);
+            } else {
+                echo 'Masukkan alamat email yang valid (contoh: nama@domain.com).';
+            }
+            return;
+        }
+
         $ip = Helper::getClientIp();
         $fp = Crypto::fingerprint($phone, $email);
         if (Blocker::isBlocked(null, $ip, $fp, $vid)) {

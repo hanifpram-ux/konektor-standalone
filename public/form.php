@@ -216,6 +216,62 @@ $vid = isset($_COOKIE['konektor_vid']) ? $_COOKIE['konektor_vid'] : '';
   if (su && window.location.href) su.value = window.location.href;
   if (rf && !rf.value && document.referrer) rf.value = document.referrer;
 })();
+
+// Client-side validation: phone min 10 digits, email format — label dari field config
+(function() {
+  var form = document.querySelector('form');
+  if (!form) return;
+
+  // Ambil label dari elemen <label> yang ada di atas input
+  function getLabel(el) {
+    var field = el.closest('.knk-field');
+    if (!field) return null;
+    var lbl = field.querySelector('.knk-label');
+    return lbl ? lbl.textContent.replace('*', '').trim() : null;
+  }
+
+  form.addEventListener('submit', function(e) {
+    var phoneEl = form.querySelector('input[name="phone"]');
+    var emailEl = form.querySelector('input[name="email"]');
+
+    if (phoneEl && phoneEl.value.trim() !== '') {
+      var digits = phoneEl.value.replace(/\D/g, '');
+      if (digits.length < 10) {
+        e.preventDefault();
+        phoneEl.focus();
+        var lbl = getLabel(phoneEl) || 'No HP';
+        showErr(phoneEl, 'Masukkan ' + lbl + ' yang valid (min. 10 digit).');
+        return;
+      }
+    }
+
+    if (emailEl && emailEl.value.trim() !== '') {
+      var emailVal = emailEl.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+        e.preventDefault();
+        emailEl.focus();
+        var lbl = getLabel(emailEl) || 'Email';
+        showErr(emailEl, 'Masukkan ' + lbl + ' yang valid (contoh: nama@domain.com).');
+        return;
+      }
+    }
+  });
+
+  function showErr(el, msg) {
+    var existing = el.parentNode.querySelector('.knk-field-err');
+    if (existing) existing.remove();
+    var err = document.createElement('div');
+    err.className = 'knk-field-err';
+    err.style.cssText = 'color:#b91c1c;font-size:12px;margin-top:4px;font-weight:600;';
+    err.textContent = msg;
+    el.parentNode.appendChild(err);
+    el.style.borderColor = '#ef4444';
+    el.addEventListener('input', function() {
+      err.remove();
+      el.style.borderColor = '';
+    }, { once: true });
+  }
+})();
 </script>
 </body>
 </html>
