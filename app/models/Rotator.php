@@ -6,61 +6,70 @@ class Rotator
     {
         $campaignId = (int)$campaignId;
 
-        // Baca dist_mode dari form_config campaign
         $campaign = Campaign::find($campaignId);
         $formCfg  = $campaign ? Campaign::getFormConfig($campaign) : [];
         $distMode = isset($formCfg['_dist_mode']) ? $formCfg['_dist_mode'] : 'proportional';
 
-        // Ambil operator aktif + bobot + jumlah lead (semua termasuk double, untuk distribusi akurat)
         $rows = DB::rows(
-            "SELECT o.*, co.weight,
-                    (SELECT COUNT(*) FROM " . DB::t('leads') . " l
-                     WHERE l.campaign_id = ? AND l.operator_id = o.id) AS lead_count
+            "SELECT o.*, co.weight
              FROM " . DB::t('operators') . " o
              JOIN " . DB::t('campaign_operators') . " co ON co.operator_id = o.id
              WHERE co.campaign_id = ? AND o.status = 'on'
              ORDER BY o.id ASC",
-            [$campaignId, $campaignId]
+            [$campaignId]
         );
 
         if (empty($rows)) return null;
 
-        // Pisahkan operator yang sedang bertugas; fallback ke semua jika tidak ada
         $available = array_values(array_filter($rows, function($o) {
             return Operator::isOnDuty($o);
         }));
-        if (empty($available)) $available = $rows;
+        if (empty($available)) $available = array_values($rows);
 
-        if ($distMode === 'roundrobin') {
-            // Pilih operator dengan lead_count terkecil (giliran berurutan)
-            $selected = $available[0];
-            foreach ($available as $op) {
-                if ((int)$op->lead_count < (int)$selected->lead_count) {
-                    $selected = $op;
-                }
+        return self::swrr($available, $campaignId, $distMode === 'roundrobin');
+    }
+
+    /**
+     * Weighted Round-Robin berbasis lead count per operator.
+     *
+     * Bangun siklus dari operator yang tersedia (available) saja,
+     * hitung total lead yang sudah diterima oleh operator-operator tsb,
+     * lalu tentukan giliran berikutnya dari posisi siklus.
+     *
+     * Contoh Aeni(w=3), Lina(w=2):
+     *   Siklus: [Aeni, Aeni, Aeni, Lina, Lina] (total 5 slot)
+     *   Total lead Aeni+Lina = N → posisi = N mod 5 → operator di slot tsb
+     *
+     * Dengan cara ini: kalau operator berubah (on/off duty), hitungan
+     * hanya dari operator yang aktif — tidak ada posisi yang kacau.
+     */
+    private static function swrr(array $ops, $campaignId, $forceEqual = false)
+    {
+        if (count($ops) === 1) return $ops[0];
+
+        // Kumpulkan operator_id yang available
+        $opIds = array_map(function($o) { return (int)$o->id; }, $ops);
+        $placeholders = implode(',', array_fill(0, count($opIds), '?'));
+
+        // Hitung total lead dari operator-operator yang available saja (per kampanye ini)
+        $totalLeads = (int)DB::val(
+            "SELECT COUNT(*) FROM " . DB::t('leads') . "
+             WHERE campaign_id = ? AND operator_id IN ({$placeholders})",
+            array_merge([$campaignId], $opIds)
+        );
+
+        // Bangun siklus slot sesuai bobot operator available
+        // Aeni(w=3), Lina(w=2) → [Aeni, Aeni, Aeni, Lina, Lina]
+        $cycle = [];
+        foreach ($ops as $op) {
+            $w = $forceEqual ? 1 : max(1, min(10, (int)$op->weight));
+            for ($i = 0; $i < $w; $i++) {
+                $cycle[] = $op;
             }
-            return $selected;
         }
 
-        // Proportional weighted: pilih operator dengan rasio lead_count/weight terkecil
-        // Tie-breaking: jika ratio sama, pilih yang lead_count absolutnya lebih kecil
-        // (cegah operator pertama selalu menang saat semua ratio 0)
-        $selected  = null;
-        $minRatio  = PHP_INT_MAX;
-        $minCount  = PHP_INT_MAX;
-        foreach ($available as $op) {
-            $w     = max(1, min(10, (int)$op->weight));
-            $count = (int)$op->lead_count;
-            $ratio = $count / $w;
-
-            if ($ratio < $minRatio || ($ratio === $minRatio && $count < $minCount)) {
-                $minRatio = $ratio;
-                $minCount = $count;
-                $selected = $op;
-            }
-        }
-
-        return $selected;
+        $pos = $totalLeads % count($cycle);
+        return $cycle[$pos];
     }
 
     public static function getFollowupUrl($campaign, $lead, $operator = null)

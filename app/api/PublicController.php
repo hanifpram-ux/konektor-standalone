@@ -199,7 +199,7 @@ class PublicController
             ? Lead::checkDouble($campaign->id, $phone, $email, $vid, $ip, $sourceUrlForDouble)
             : false;
 
-        // Rotator — pick operator
+        // Rotator — pick operator (duplikat tetap ikut rotator sesuai bobot)
         $operator = Rotator::pick($campaign->id);
 
         // Collect standard + extra fields

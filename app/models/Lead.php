@@ -190,6 +190,65 @@ class Lead
         DB::update('leads', ['is_double' => 1], ['id' => (int)$id]);
     }
 
+    /**
+     * Ambil operator dari lead original (non-double) untuk kampanye yang sama.
+     * Dipakai saat lead duplikat masuk — operator tidak di-pick ulang dari rotator
+     * agar distribusi bobot tidak terganggu.
+     */
+    public static function getOriginalOperator($campaignId, $phone = '', $email = '', $vid = '', $ip = '', $sourceUrl = '')
+    {
+        $campaignId = (int)$campaignId;
+        $scope      = Settings::get('double_lead_scope', 'campaign');
+        $t          = DB::t('leads');
+
+        if ($scope === 'page' && $sourceUrl) {
+            $scopeWhere  = 'source_url = ?';
+            $scopeParams = [substr($sourceUrl, 0, 2000)];
+        } elseif ($scope === 'domain' && $sourceUrl) {
+            $host = parse_url($sourceUrl, PHP_URL_HOST);
+            if ($host) {
+                $scopeWhere  = "(source_url LIKE ? OR source_url LIKE ?)";
+                $scopeParams = ['http://' . $host . '%', 'https://' . $host . '%'];
+            } else {
+                $scopeWhere  = 'campaign_id = ?';
+                $scopeParams = [$campaignId];
+            }
+        } else {
+            $scopeWhere  = 'campaign_id = ?';
+            $scopeParams = [$campaignId];
+        }
+
+        // Cari lead original berdasarkan urutan prioritas yang sama dengan checkDouble
+        $operatorId = null;
+
+        if ($phone !== '' || $email !== '') {
+            $fingerprint = Crypto::fingerprint(Helper::sanitizePhone($phone), $email);
+            if ($fingerprint) {
+                $operatorId = DB::val(
+                    "SELECT operator_id FROM {$t} WHERE {$scopeWhere} AND fingerprint = ? AND is_double = 0 ORDER BY id ASC LIMIT 1",
+                    array_merge($scopeParams, [$fingerprint])
+                );
+            }
+        }
+
+        if (!$operatorId && $vid) {
+            $operatorId = DB::val(
+                "SELECT operator_id FROM {$t} WHERE {$scopeWhere} AND cookie_id = ? AND is_double = 0 ORDER BY id ASC LIMIT 1",
+                array_merge($scopeParams, [$vid])
+            );
+        }
+
+        if (!$operatorId && $ip) {
+            $operatorId = DB::val(
+                "SELECT operator_id FROM {$t} WHERE {$scopeWhere} AND ip_address = ? AND is_double = 0 ORDER BY id ASC LIMIT 1",
+                array_merge($scopeParams, [$ip])
+            );
+        }
+
+        if (!$operatorId) return null;
+        return Operator::find((int)$operatorId);
+    }
+
     public static function markFollowedUp($id)
     {
         DB::update('leads', ['followed_up_at' => date('Y-m-d H:i:s')], ['id' => (int)$id]);
