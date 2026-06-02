@@ -379,7 +379,6 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
               </div>
               <?php endif; ?>
 
-            </div>
               <div style="border-top:1px solid hsl(var(--border));padding-top:14px;margin-top:2px;">
                 <label class="label">Cron Secret <span style="font-weight:400;color:hsl(var(--muted-foreground));">(untuk rekap harian)</span></label>
                 <div class="pw-wrap">
