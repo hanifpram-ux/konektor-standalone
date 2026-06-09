@@ -82,7 +82,12 @@ function buildSnippetData($c)
     $fsize  = $cssVal($fsize); $bfsize = $cssVal($bfsize);
     $bpy    = $cssVal($bpy);   $radius = $cssVal($radius);
 
-    // ── Pixel scripts ─────────────────────────────────────────────────────
+    // ── Pixel scripts untuk embed ─────────────────────────────────────────
+    // Browser pixel (fbq/ttq/snack) SELALU disertakan di embed karena embed
+    // dipasang di landing page user dan butuh PageView tracking.
+    // Event setelah submit (Lead/SubmitForm) dicontrol oleh flag capi_meta/capi_tiktok
+    // dari response JSON — bukan dengan menghapus script dari embed.
+    // Google Ads selalu browser-only (tidak ada CAPI equivalent).
     $metaSc    = MetaApi::getPixelScript($c, 'page_load');
     $tiktokSc  = TiktokApi::getScript($c, 'page_load');
     $googleSc  = GoogleApi::getScript($c, 'page_load');
@@ -152,7 +157,7 @@ function buildSnippetData($c)
     // .knk-wrap: NO flex/min-height — responsive mengikuti container host
     $formCode = <<<HTML
 <!-- Konektor Form: {$campNameSafe} -->
-{$metaSc}{$tiktokSc}{$googleSc}
+{$metaSc}{$tiktokSc}{$googleSc}{$snackHtml}
 <style>
 .knk-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
 .knk-card{background:{$card};border-radius:{$radius};box-shadow:{$shadow};padding:{$pad};color:{$txt};max-width:{$maxW};margin:0 auto;}
@@ -187,7 +192,7 @@ function buildSnippetData($c)
     .then(function(r){return r.json();})
     .then(function(res){
       if(res.thanks_page_url){
-        if(!res.double){if(window.fbq)fbq('track','Lead');if(window.ttq)ttq.track('SubmitForm');if(window.gtag)gtag('event','generate_lead');}
+        if(!res.double){if(!res.capi_meta&&window.fbq)fbq('track','Lead');if(!res.capi_tiktok&&window.ttq)ttq.track('SubmitForm');if(window.gtag)gtag('event','generate_lead');}
         location.href=res.thanks_page_url;return;
       }
       err.textContent=res.message||'Terjadi kesalahan.';err.className='knk-err show';chk();
@@ -219,6 +224,7 @@ HTML;
         // Link: anchor langsung ke URL kampanye + pass _vid untuk tracking
         $btnCode = <<<HTML
 <!-- Konektor Link Button: {$campNameSafe} -->
+{$metaSc}{$tiktokSc}{$googleSc}{$snackHtml}
 <style>
 .knk-btn-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
 .knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt}!important;border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none!important;font-family:inherit;transition:{$linkBtnTransition};margin:0 auto;}
@@ -248,7 +254,7 @@ HTML;
         // Form campaign: tombol navigasi ke halaman form
         $btnCode = <<<HTML
 <!-- Konektor Button: {$campNameSafe} -->
-{$metaSc}{$tiktokSc}{$googleSc}
+{$metaSc}{$tiktokSc}{$googleSc}{$snackHtml}
 <style>
 .knk-btn-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:100%;}
 .knk-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:{$maxW};padding:{$bpy} 20px;background:{$acc};color:{$btnTxt}!important;border:none;border-radius:{$radius};font-size:{$bfsize};font-weight:700;cursor:pointer;text-decoration:none!important;font-family:inherit;transition:{$linkBtnTransition};margin:0 auto;}

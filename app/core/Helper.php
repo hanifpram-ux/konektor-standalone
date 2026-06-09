@@ -360,13 +360,19 @@ class Helper
         $tiktokCfg = TiktokApi::getConfig($campaign);
         $snackCfg  = SnackApi::getConfig($campaign);
 
-        if (!empty($mapping['meta']) && !empty($metaCfg['token'])) {
+        $useBrowser = function(array $cfg, $tokenKey) {
+            $mode = isset($cfg['pixel_mode']) ? $cfg['pixel_mode'] : 'capi';
+            if ($mode === 'pixel') return true;
+            return empty($cfg[$tokenKey]);
+        };
+
+        if (!empty($mapping['meta']) && !empty($metaCfg['token']) && !$useBrowser($metaCfg, 'token')) {
             MetaApi::sendEvent($mapping['meta'], $leadArr, $metaCfg);
         }
-        if (!empty($mapping['tiktok']) && !empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token'])) {
+        if (!empty($mapping['tiktok']) && !empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token']) && !$useBrowser($tiktokCfg, 'access_token')) {
             TiktokApi::sendEvent($mapping['tiktok'], $leadArr, $tiktokCfg);
         }
-        if (!empty($mapping['snack']) && !empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token'])) {
+        if (!empty($mapping['snack']) && !empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token']) && !$useBrowser($snackCfg, 'access_token')) {
             SnackApi::sendEvent($mapping['snack'], $leadArr, $snackCfg);
         }
     }

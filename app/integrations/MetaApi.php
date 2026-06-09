@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Meta Conversions API v21.0 (latest Graph API)
+ * Meta Conversions API v25.0 (latest Graph API)
  */
 class MetaApi
 {
-    const API_VERSION = 'v21.0';
+    const API_VERSION = 'v25.0';
 
     public static function getConfig($campaign)
     {

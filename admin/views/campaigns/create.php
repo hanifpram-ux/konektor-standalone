@@ -25,10 +25,10 @@ $formCfg   = $campaign ? Campaign::getFormConfig($campaign)   : Campaign::defaul
 $thanksCfg = $campaign ? Campaign::getThanksConfig($campaign) : Campaign::defaultThanksConfig();
 
 $pixelBase = [
-    'meta'   => ['enabled'=>'0','pixel_id'=>'','token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_event_code'=>''],
-    'tiktok' => ['enabled'=>'0','pixel_id'=>'','access_token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_event_code'=>''],
+    'meta'   => ['enabled'=>'0','pixel_mode'=>'capi','pixel_id'=>'','token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_event_code'=>''],
+    'tiktok' => ['enabled'=>'0','pixel_mode'=>'capi','pixel_id'=>'','access_token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_event_code'=>''],
     'google' => ['enabled'=>'0','gtm_id'=>'','conversion_id'=>'','ga4_id'=>'','page_load_label'=>'','form_submit_label'=>'','thanks_page_label'=>'','value'=>'','currency'=>'IDR'],
-    'snack'  => ['enabled'=>'0','pixel_id'=>'','access_token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_mode'=>'','test_click_id'=>'','html'=>''],
+    'snack'  => ['enabled'=>'0','pixel_mode'=>'capi','pixel_id'=>'','access_token'=>'','page_load_event'=>'','form_submit_event'=>'','thanks_page_event'=>'','value'=>'','currency'=>'IDR','test_mode'=>'','test_click_id'=>'','html'=>''],
 ];
 $pixelCfg = $campaign && $campaign->pixel_config ? json_decode($campaign->pixel_config, true) : [];
 foreach ($pixelBase as $k => $def) {
@@ -657,6 +657,28 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       </summary>
       <div class="details-body" id="px_meta_body" style="display:flex;flex-direction:column;gap:14px;">
 
+        <!-- Mode: CAPI vs Pixel Biasa -->
+        <div id="px_meta_mode_row" style="display:flex;gap:8px;">
+          <label id="px_meta_mode_capi_card" onclick="KNK.setPixelMode('meta','capi')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--primary));border-radius:var(--radius);cursor:pointer;background:hsl(var(--primary)/.04);transition:border-color .15s;">
+            <input type="radio" name="px_meta_mode" value="capi" id="px_meta_mode_capi" <?= ($pixelCfg['meta']['pixel_mode'] ?? 'capi') === 'capi' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">CAPI (Server-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Event dikirim dari server — akurat, tidak terblokir ad blocker. Butuh Access Token.</div>
+            </div>
+          </label>
+          <label id="px_meta_mode_pixel_card" onclick="KNK.setPixelMode('meta','pixel')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--border));border-radius:var(--radius);cursor:pointer;transition:border-color .15s;">
+            <input type="radio" name="px_meta_mode" value="pixel" id="px_meta_mode_pixel" <?= ($pixelCfg['meta']['pixel_mode'] ?? 'capi') === 'pixel' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">Pixel Biasa (Browser-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Script fbq dijalankan di browser pengunjung. Tidak butuh token.</div>
+            </div>
+          </label>
+        </div>
+
         <!-- Kredensial -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
           <div>
@@ -664,7 +686,7 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
             <input id="px_meta_pixel_id" class="input" style="font-size:12px;padding:6px 10px;" placeholder="123456789012345"
               value="<?= ae($pixelCfg['meta']['pixel_id']) ?>" oninput="KNK.setPixel('meta','pixel_id',this.value)">
           </div>
-          <div>
+          <div id="px_meta_token_wrap">
             <?= pxLabel('Access Token (CAPI)') ?>
             <input id="px_meta_token" class="input" style="font-size:12px;padding:6px 10px;" placeholder="EAAxxxxxxxx..."
               value="<?= ae($pixelCfg['meta']['token']) ?>" oninput="KNK.setPixel('meta','token',this.value)">
@@ -742,13 +764,35 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       </summary>
       <div class="details-body" id="px_tiktok_body" style="display:flex;flex-direction:column;gap:14px;">
 
+        <!-- Mode: CAPI vs Pixel Biasa -->
+        <div id="px_tiktok_mode_row" style="display:flex;gap:8px;">
+          <label id="px_tiktok_mode_capi_card" onclick="KNK.setPixelMode('tiktok','capi')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--primary));border-radius:var(--radius);cursor:pointer;background:hsl(var(--primary)/.04);transition:border-color .15s;">
+            <input type="radio" name="px_tiktok_mode" value="capi" id="px_tiktok_mode_capi" <?= ($pixelCfg['tiktok']['pixel_mode'] ?? 'capi') === 'capi' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">CAPI (Server-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Event dikirim dari server — akurat, tidak terblokir ad blocker. Butuh Access Token.</div>
+            </div>
+          </label>
+          <label id="px_tiktok_mode_pixel_card" onclick="KNK.setPixelMode('tiktok','pixel')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--border));border-radius:var(--radius);cursor:pointer;transition:border-color .15s;">
+            <input type="radio" name="px_tiktok_mode" value="pixel" id="px_tiktok_mode_pixel" <?= ($pixelCfg['tiktok']['pixel_mode'] ?? 'capi') === 'pixel' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">Pixel Biasa (Browser-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Script ttq dijalankan di browser pengunjung. Tidak butuh token.</div>
+            </div>
+          </label>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
           <div>
             <?= pxLabel('Pixel ID') ?>
             <input id="px_tiktok_pixel_id" class="input" style="font-size:12px;padding:6px 10px;" placeholder="CPXXXXXXXX"
               value="<?= ae($pixelCfg['tiktok']['pixel_id']) ?>" oninput="KNK.setPixel('tiktok','pixel_id',this.value)">
           </div>
-          <div>
+          <div id="px_tiktok_token_wrap">
             <?= pxLabel('Access Token') ?>
             <input id="px_tiktok_access_token" class="input" style="font-size:12px;padding:6px 10px;" placeholder="Token dari Events Manager"
               value="<?= ae($pixelCfg['tiktok']['access_token']) ?>" oninput="KNK.setPixel('tiktok','access_token',this.value)">
@@ -820,13 +864,35 @@ include dirname(__DIR__, 2) . '/inc/sidebar.php';
       </summary>
       <div class="details-body" id="px_snack_body" style="display:flex;flex-direction:column;gap:14px;">
 
+        <!-- Mode: CAPI vs Pixel Biasa -->
+        <div id="px_snack_mode_row" style="display:flex;gap:8px;">
+          <label id="px_snack_mode_capi_card" onclick="KNK.setPixelMode('snack','capi')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--primary));border-radius:var(--radius);cursor:pointer;background:hsl(var(--primary)/.04);transition:border-color .15s;">
+            <input type="radio" name="px_snack_mode" value="capi" id="px_snack_mode_capi" <?= ($pixelCfg['snack']['pixel_mode'] ?? 'capi') === 'capi' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">CAPI (Server-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Event dikirim dari server — akurat, tidak terblokir ad blocker. Butuh Access Token.</div>
+            </div>
+          </label>
+          <label id="px_snack_mode_pixel_card" onclick="KNK.setPixelMode('snack','pixel')"
+            style="flex:1;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:2px solid hsl(var(--border));border-radius:var(--radius);cursor:pointer;transition:border-color .15s;">
+            <input type="radio" name="px_snack_mode" value="pixel" id="px_snack_mode_pixel" <?= ($pixelCfg['snack']['pixel_mode'] ?? 'capi') === 'pixel' ? 'checked' : '' ?>
+              style="accent-color:hsl(var(--primary));margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-size:12px;font-weight:700;">Pixel Biasa (Browser-side)</div>
+              <div style="font-size:11px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:2px;">Hanya gunakan HTML Snippet di bawah — tanpa token server.</div>
+            </div>
+          </label>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
           <div>
             <?= pxLabel('Pixel ID') ?>
             <input id="px_snack_pixel_id" class="input" style="font-size:12px;padding:6px 10px;" placeholder="Pixel ID"
               value="<?= ae($pixelCfg['snack']['pixel_id']) ?>" oninput="KNK.setPixel('snack','pixel_id',this.value)">
           </div>
-          <div>
+          <div id="px_snack_token_wrap">
             <?= pxLabel('Access Token') ?>
             <input id="px_snack_access_token" class="input" style="font-size:12px;padding:6px 10px;" placeholder="Access Token"
               value="<?= ae($pixelCfg['snack']['access_token']) ?>" oninput="KNK.setPixel('snack','access_token',this.value)">
@@ -1358,6 +1424,24 @@ const KNK = (() => {
     applyPixelToggleUI(platform, next);
   }
 
+  function setPixelMode(platform, mode) {
+    if (!d.pixelCfg[platform]) d.pixelCfg[platform] = {};
+    d.pixelCfg[platform].pixel_mode = mode;
+    // radio
+    var rCapi  = $('px_' + platform + '_mode_capi');
+    var rPixel = $('px_' + platform + '_mode_pixel');
+    if (rCapi)  rCapi.checked  = (mode === 'capi');
+    if (rPixel) rPixel.checked = (mode === 'pixel');
+    // card highlight
+    var cCapi  = $('px_' + platform + '_mode_capi_card');
+    var cPixel = $('px_' + platform + '_mode_pixel_card');
+    if (cCapi)  { cCapi.style.borderColor  = mode === 'capi'  ? 'hsl(var(--primary))' : 'hsl(var(--border))'; cCapi.style.background  = mode === 'capi'  ? 'hsl(var(--primary)/.04)' : ''; }
+    if (cPixel) { cPixel.style.borderColor = mode === 'pixel' ? 'hsl(var(--primary))' : 'hsl(var(--border))'; cPixel.style.background = mode === 'pixel' ? 'hsl(var(--primary)/.04)' : ''; }
+    // show/hide token field
+    var tokenWrap = $('px_' + platform + '_token_wrap');
+    if (tokenWrap) tokenWrap.style.display = mode === 'capi' ? '' : 'none';
+  }
+
   function applyPixelToggleUI(platform, enabled) {
     // body fade
     var body = $('px_' + platform + '_body');
@@ -1811,8 +1895,18 @@ const KNK = (() => {
       const cfg=d.pixelCfg[plat]||{};
       var isEnabled = cfg.enabled === '1';
       applyPixelToggleUI(plat, isEnabled);
+      // Apply pixel_mode (CAPI vs pixel) for platforms that have it
+      if (['meta','tiktok','snack'].indexOf(plat) >= 0) {
+        // Backward compat: old campaigns without pixel_mode but with token → treat as capi
+        var savedMode = cfg.pixel_mode;
+        if (!savedMode) {
+          var hasToken = (plat === 'meta' && cfg.token) || (plat === 'tiktok' && cfg.access_token) || (plat === 'snack' && cfg.access_token);
+          savedMode = hasToken ? 'capi' : 'pixel';
+        }
+        setPixelMode(plat, savedMode);
+      }
       Object.keys(cfg).forEach(function(key) {
-        if(key==='enabled') return;
+        if(key==='enabled' || key==='pixel_mode') return;
         if(key==='test_mode') { const cel=$('px_snack_test'); if(cel) cel.checked=!!cfg[key]; return; }
         const el=$('px_'+plat+'_'+key);
         if(el && el.tagName!=='SELECT') el.value=cfg[key]||'';
@@ -1860,7 +1954,7 @@ const KNK = (() => {
 
   // Public API
   return { d, tab, onNameInput, toggle, onRedirectType, setFormTpl, setSize, setThanksTpl,
-           setStyle, setTheme, setPixel, togglePixel, togglePixelUI, applyPixelToggleUI,
+           setStyle, setTheme, setPixel, togglePixel, togglePixelUI, applyPixelToggleUI, setPixelMode,
            addExtraField, removeExtraField,
            toggleOp, adjustWeight, setOpWeight, setDistMode,
            openPreview, closePreview, switchPreview, save, populateUI,

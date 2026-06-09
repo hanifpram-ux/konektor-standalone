@@ -36,10 +36,19 @@ $desc      = !empty($cfg['description'])   ? $cfg['description']   : 'Pesanan An
 $delay     = (int)(isset($cfg['delay_redirect']) ? $cfg['delay_redirect'] : 3);
 $showCount = !empty($cfg['show_countdown']);
 
-// Browser-side pixel scripts
-if (!isset($metaSc))   $metaSc   = MetaApi::getPixelScript($campaign, 'thanks_page');
-if (!isset($tiktokSc)) $tiktokSc = TiktokApi::getScript($campaign, 'thanks_page');
+// Browser-side pixel scripts — respect pixel_mode (same guard as PublicController::useBrowserPixel)
+$_metaCfgTp   = MetaApi::getConfig($campaign);
+$_tiktokCfgTp = TiktokApi::getConfig($campaign);
+$_snackCfgTp  = SnackApi::getConfig($campaign);
+$_useBrowser  = function(array $cfg, string $tokenKey): bool {
+    $mode = $cfg['pixel_mode'] ?? 'capi';
+    return ($mode === 'pixel') || empty($cfg[$tokenKey]);
+};
+if (!isset($metaSc))   $metaSc   = $_useBrowser($_metaCfgTp,   'token')        ? MetaApi::getPixelScript($campaign, 'thanks_page') : '';
+if (!isset($tiktokSc)) $tiktokSc = $_useBrowser($_tiktokCfgTp, 'access_token') ? TiktokApi::getScript($campaign, 'thanks_page')    : '';
 if (!isset($googleSc)) $googleSc = GoogleApi::getScript($campaign, 'thanks_page');
+if (!isset($snackSc))  $snackSc  = $_useBrowser($_snackCfgTp,  'access_token') ? SnackApi::getScript($campaign) : '';
+unset($_metaCfgTp, $_tiktokCfgTp, $_snackCfgTp, $_useBrowser);
 
 // Card shape based on template variant
 $tplName   = isset($cfg['template']) ? $cfg['template'] : 'modern';

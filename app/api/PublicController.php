@@ -251,6 +251,8 @@ class PublicController
         Analytics::logEvent($campaign->id, 'form_submit', $leadId);
 
         // ── Server-side pixels: form_submit (only for new / non-double leads) ──
+        $capiMetaFired   = false;
+        $capiTiktokFired = false;
         if (!$isDouble) {
             $eventData = array_merge($leadData, [
                 'product_name' => isset($campaign->product_name) ? $campaign->product_name : '',
@@ -262,17 +264,18 @@ class PublicController
             $tiktokCfg = TiktokApi::getConfig($campaign);
             $snackCfg  = SnackApi::getConfig($campaign);
 
-            if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token'])) {
+            if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token']) && !self::useBrowserPixel($metaCfg, 'token')) {
                 MetaApi::sendEvent($metaCfg['form_submit_event'] ?? '', $eventData, $metaCfg);
+                $capiMetaFired = true;
             }
-            if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token'])) {
+            if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token']) && !self::useBrowserPixel($tiktokCfg, 'access_token')) {
                 TiktokApi::sendEvent('form_submit', $eventData, $tiktokCfg);
+                $capiTiktokFired = true;
             }
-            if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token'])) {
+            if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token']) && !self::useBrowserPixel($snackCfg, 'access_token')) {
                 SnackApi::sendEvent('form_submit', $eventData, $snackCfg);
             }
         }
-        // Note: getConfig() now returns [] if platform is disabled, so checks above are sufficient
 
         // Telegram notification (skip duplikat)
         if (!$isDouble && $operator && !empty($operator->telegram_chat_id)) {
@@ -297,10 +300,12 @@ class PublicController
         if ($isJson) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
-                'success'         => true,
-                'double'          => $isDouble,
-                'thanks_page_url' => $thanksUrl,
-                'message'         => $isDouble
+                'success'          => true,
+                'double'           => $isDouble,
+                'thanks_page_url'  => $thanksUrl,
+                'capi_meta'        => $capiMetaFired,
+                'capi_tiktok'      => $capiTiktokFired,
+                'message'          => $isDouble
                     ? ($campaign->double_lead_message ?: 'Terima kasih! Data Anda sudah tercatat.')
                     : 'Sukses!',
             ]);
@@ -437,13 +442,13 @@ class PublicController
             $tiktokCfg = TiktokApi::getConfig($campaign);
             $snackCfg  = SnackApi::getConfig($campaign);
 
-            if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token'])) {
+            if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token']) && !self::useBrowserPixel($metaCfg, 'token')) {
                 MetaApi::sendEvent($metaCfg['thanks_page_event'] ?? '', $eventData, $metaCfg);
             }
-            if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token'])) {
+            if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token']) && !self::useBrowserPixel($tiktokCfg, 'access_token')) {
                 TiktokApi::sendEvent('thanks_page', $eventData, $tiktokCfg);
             }
-            if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token'])) {
+            if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token']) && !self::useBrowserPixel($snackCfg, 'access_token')) {
                 SnackApi::sendEvent('thanks_page', $eventData, $snackCfg);
             }
 
@@ -467,16 +472,17 @@ class PublicController
         // Browser-side scripts: skip entirely for double/blocked leads
         $metaCfg  = MetaApi::getConfig($campaign);
         $tiktokCfg= TiktokApi::getConfig($campaign);
+        $snackCfg = SnackApi::getConfig($campaign);
         if ($isDouble || $isBlocked) {
             $metaSc   = '';
             $tiktokSc = '';
             $googleSc = '';
             $snackSc  = '';
         } else {
-            $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'thanks_page') : '';
-            $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'thanks_page') : '';
+            $metaSc   = self::useBrowserPixel($metaCfg,   'token')        ? MetaApi::getPixelScript($campaign, 'thanks_page') : '';
+            $tiktokSc = self::useBrowserPixel($tiktokCfg, 'access_token') ? TiktokApi::getScript($campaign, 'thanks_page')    : '';
             $googleSc = GoogleApi::getScript($campaign, 'thanks_page');
-            $snackSc  = SnackApi::getScript($campaign);
+            $snackSc  = self::useBrowserPixel($snackCfg,  'access_token') ? SnackApi::getScript($campaign) : '';
         }
 
         // Pass form config so thanks.php can derive colors from the same scheme
@@ -512,13 +518,14 @@ class PublicController
         $tiktokCfg = TiktokApi::getConfig($campaign);
         $snackCfg  = SnackApi::getConfig($campaign);
 
-        if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token'])) {
+        // Only fire CAPI if platform is in CAPI mode (not browser-pixel mode)
+        if (!empty($metaCfg['pixel_id']) && !empty($metaCfg['token']) && !self::useBrowserPixel($metaCfg, 'token')) {
             MetaApi::sendEvent($metaCfg['page_load_event'] ?? '', $eventData, $metaCfg);
         }
-        if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token'])) {
+        if (!empty($tiktokCfg['pixel_id']) && !empty($tiktokCfg['access_token']) && !self::useBrowserPixel($tiktokCfg, 'access_token')) {
             TiktokApi::sendEvent('page_load', $eventData, $tiktokCfg);
         }
-        if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token'])) {
+        if (!empty($snackCfg['pixel_id']) && !empty($snackCfg['access_token']) && !self::useBrowserPixel($snackCfg, 'access_token')) {
             SnackApi::sendEvent('page_load', $eventData, $snackCfg);
         }
 
@@ -535,13 +542,14 @@ class PublicController
         $isDemoMode = true; // flag picked up by templates
         $cfg        = Campaign::getFormConfig($campaign);
 
-        // Browser-side pixel scripts: inject hanya jika CAPI token belum diisi
+        // Browser-side pixel scripts: respect pixel_mode setting
         $metaCfg  = MetaApi::getConfig($campaign);
         $tiktokCfg= TiktokApi::getConfig($campaign);
-        $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'page_load') : '';
-        $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'page_load') : '';
+        $snackCfg = SnackApi::getConfig($campaign);
+        $metaSc   = self::useBrowserPixel($metaCfg,   'token')        ? MetaApi::getPixelScript($campaign, 'page_load') : '';
+        $tiktokSc = self::useBrowserPixel($tiktokCfg, 'access_token') ? TiktokApi::getScript($campaign, 'page_load')    : '';
         $googleSc = GoogleApi::getScript($campaign, 'page_load');
-        $snackSc  = SnackApi::getScript($campaign);
+        $snackSc  = self::useBrowserPixel($snackCfg,  'access_token') ? SnackApi::getScript($campaign) : '';
 
         if ($campaign->type === 'wa_link') {
             include KONEKTOR_ROOT . '/public/link.php';
@@ -550,30 +558,42 @@ class PublicController
         }
     }
 
+    // ─── Pixel mode helpers ───────────────────────────────────────────────────
+
+    // Returns true if browser-side pixel should fire for this platform.
+    // pixel_mode='pixel' → always browser. pixel_mode='capi' (or absent) → browser only if no token.
+    private static function useBrowserPixel(array $cfg, string $tokenKey): bool
+    {
+        $mode = isset($cfg['pixel_mode']) ? $cfg['pixel_mode'] : 'capi';
+        if ($mode === 'pixel') return true;
+        return empty($cfg[$tokenKey]);
+    }
+
     // ─── Render helpers ──────────────────────────────────────────────────────
 
     private static function renderForm($campaign)
     {
-        $cfg      = Campaign::getFormConfig($campaign);
-        $metaCfg  = MetaApi::getConfig($campaign);
-        $tiktokCfg= TiktokApi::getConfig($campaign);
-        // Jika CAPI token diisi, skip browser pixel — server-side CAPI sudah cukup
-        $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'page_load') : '';
-        $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'page_load') : '';
+        $cfg       = Campaign::getFormConfig($campaign);
+        $metaCfg   = MetaApi::getConfig($campaign);
+        $tiktokCfg = TiktokApi::getConfig($campaign);
+        $snackCfg  = SnackApi::getConfig($campaign);
+        $metaSc   = self::useBrowserPixel($metaCfg,   'token')        ? MetaApi::getPixelScript($campaign, 'page_load') : '';
+        $tiktokSc = self::useBrowserPixel($tiktokCfg, 'access_token') ? TiktokApi::getScript($campaign, 'page_load')    : '';
         $googleSc = GoogleApi::getScript($campaign, 'page_load');
-        $snackSc  = SnackApi::getScript($campaign);
+        $snackSc  = self::useBrowserPixel($snackCfg,  'access_token') ? SnackApi::getScript($campaign) : '';
         include KONEKTOR_ROOT . '/public/form.php';
     }
 
     private static function renderWaLink($campaign)
     {
-        $cfg      = Campaign::getFormConfig($campaign);
-        $metaCfg  = MetaApi::getConfig($campaign);
-        $tiktokCfg= TiktokApi::getConfig($campaign);
+        $cfg       = Campaign::getFormConfig($campaign);
+        $metaCfg   = MetaApi::getConfig($campaign);
+        $tiktokCfg = TiktokApi::getConfig($campaign);
+        $snackCfg  = SnackApi::getConfig($campaign);
+        $metaSc   = self::useBrowserPixel($metaCfg,   'token')        ? MetaApi::getPixelScript($campaign, 'page_load') : '';
+        $tiktokSc = self::useBrowserPixel($tiktokCfg, 'access_token') ? TiktokApi::getScript($campaign, 'page_load')    : '';
         $googleSc = GoogleApi::getScript($campaign, 'page_load');
-        $metaSc   = empty($metaCfg['token'])   ? MetaApi::getPixelScript($campaign, 'page_load') : '';
-        $tiktokSc = empty($tiktokCfg['access_token']) ? TiktokApi::getScript($campaign, 'page_load') : '';
-        $snackSc  = SnackApi::getScript($campaign);
+        $snackSc  = self::useBrowserPixel($snackCfg,  'access_token') ? SnackApi::getScript($campaign) : '';
         include KONEKTOR_ROOT . '/public/link.php';
     }
 }
